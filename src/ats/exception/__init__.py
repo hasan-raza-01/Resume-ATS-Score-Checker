@@ -1,5 +1,5 @@
 import sys
-from src.ats.logger import logging
+from src.ats import logging
 
 def get_mssg(mssg, sys_obj):
     _, _, exc_traceback = sys_obj.exc_info()

@@ -1,7 +1,7 @@
 from src.ats.exception import CustomException
 from pathlib import Path
 from box import ConfigBox
-import sys, yaml, os, json, pickle
+import sys, yaml, os, json, pickle, shutil, re 
 
 
 
@@ -111,3 +111,44 @@ def load_pickle(path:str)-> object:
     except Exception as e:
         raise CustomException(e, sys)
     
+def save_file(content:str, path:Path) -> None:
+    try:
+        binary_ext = [".pdf", ".docx", ".html", ] 
+        file_path, file_name = os.path.split(path)
+        create_dirs(file_path)
+        ext = os.path.splitext(file_name)[-1].lower() 
+        if isinstance(content, str) and "raw" not in path:
+            ext = ext.replace(".", "_") + ".txt"
+        if "."+ext.split(".")[-1] in binary_ext:
+            mode = "wb"
+        else:
+            mode = "wt" 
+        file_name_without_ext = os.path.splitext(file_name)[0]
+        file_name = file_name_without_ext + ext 
+        path = os.path.join(file_path, file_name)
+        while True:
+            if not os.path.exists(path):
+                io = open(path, mode)
+                break
+            else: 
+                match_result = re.search(r'\(([1-9]\d*)\)', file_name)
+                if not match_result:
+                    file_name = file_name_without_ext + "(1)" + ext 
+                    path = os.path.join(file_path, file_name) 
+                else:
+                    element = match_result.group(1) 
+                    start, end = len(file_name_without_ext)-3, len(file_name_without_ext)
+                    file_name = file_name_without_ext[:file_name_without_ext.index(element, start, end)-1] + f"({int(element) + 1})" + ext
+                    path = os.path.join(file_path, file_name)
+                    del element 
+                path = Path(path)
+                del file_name, file_name_without_ext
+                file_name = os.path.split(path)[-1] 
+                file_name_without_ext = os.path.splitext(file_name)[0]
+        if isinstance(content, str):
+            io.write(content) 
+        else:
+            shutil.copyfileobj(content, io)
+        io.close() 
+    except Exception as e:
+        raise CustomException(e, sys) 

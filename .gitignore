@@ -12,3 +12,7 @@ logs/
 artifacts/
 .env
 template.py
+project-plan.txt
+.ignore
+notebook/trail.ipynb 
+notebook/test 

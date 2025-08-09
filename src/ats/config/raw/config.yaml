@@ -1,0 +1,9 @@
+ROOT_DIR: artifacts 
+
+DATA: 
+    ROOT_DIR: data 
+    INGESTION: 
+        ROOT_DIR: ingestion 
+        RAW_DATA_DIR: raw 
+        PARSED_DATA_DIR: parsed 
+        FINAL_DATA_DIR: final

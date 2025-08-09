@@ -1,3 +1,11 @@
 ipykernel
-python-box
+python-box 
+python-dotenv 
 PyYAML
+requests
+toml
+fastapi 
+fastapi[standard] 
+unstructured[docx, pdf] 
+unstructured-pytesseract 
+ipywidgets 
