@@ -12,7 +12,7 @@ from string import punctuation
 from src.ats.entity import * 
 from pathlib import Path 
 from typing import Dict, List 
-import sys, os, re 
+import sys, os 
 
 
 @dataclass
@@ -61,8 +61,8 @@ class DataIngestionComponents:
                     else:
                         save_file(file.file.read(), path)
                     del ext
-                    output[file_name] = path 
                     logging.info(f"\'{file_name}\' saved at \'{path}\'")
+                    output[file_name] = path 
             else: 
                 raise ValueError(f"{files_len} files recieved.")
             logging.info("Out __load")
@@ -138,10 +138,11 @@ class DataIngestionComponents:
                 # save file to local 
                 path = os.path.join(self.data_ingestion_config.PARSED_DATA_DIR_PATH, file_name)
                 save_file(elements_string, path) 
+                logging.info(f"\'{file_name}\' saved at \'{path}\'")
                 del path, ext 
                 output[file_name] = elements_string 
                 del elements_string 
-            logging.info("Out __parse")
+            logging.info("Out __parse") 
             return output 
         except Exception as e: 
             logging.error(e) 
@@ -186,12 +187,11 @@ class DataIngestionComponents:
             output = {} 
             for file_name in info.keys():
                 logging.info(f"cleaning \'{file_name}\'")
-                logging.info(f"cleaning \'{file_name}\'")
                 new_line_char = " mmmmmmm " 
                 elements_string = info[file_name]
-                elements_string = elements_string.replace("\n", new_line_char).replace("|", ",") 
-                elements_string = re.sub(r'–', '-', elements_string) 
-                for i in punctuation: 
+                elements_string = elements_string.replace("\n", new_line_char)
+                # elements_string = re.sub(r'–', '-', elements_string) 
+                for i in punctuation+'–': 
                     elements_string = elements_string.replace(i, " ") 
                 elements_string = " ".join(elements_string.split())
                 elements_string = elements_string.replace(new_line_char.strip(), "\n") 
@@ -199,13 +199,15 @@ class DataIngestionComponents:
                 # save file to local 
                 path = os.path.join(self.data_ingestion_config.FINAL_DATA_DIR_PATH, file_name)
                 save_file(elements_string, path) 
+                logging.info(f"\'{file_name}\' saved at \'{path}\'")
                 output[file_name] = elements_string 
                 del elements_string 
             logging.info("Out __clean") 
+            return output
         except Exception as e: 
             logging.error(e) 
             raise CustomException(e, sys) 
-        
+
     def _main(self, files: List[UploadFile]) -> Dict[str, str]: 
         """runs data ingestion components 
 
