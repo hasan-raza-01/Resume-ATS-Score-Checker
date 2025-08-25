@@ -4,10 +4,11 @@
 from .values import *
 from src.ats.utils import load_yaml
 from typing import Dict 
+import os 
 
 
 
-CONFIG = load_yaml("src\\ats\\config\\raw\\config.yaml") 
+CONFIG = load_yaml(os.path.join("src", "ats", "config", "raw", "config.yaml")) 
 
 def load_constants(name: str | list[str] | tuple[str]) -> Dict:
     """loads respective constants for the given name
