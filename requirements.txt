@@ -6,6 +6,14 @@ requests
 toml
 fastapi 
 fastapi[standard] 
-unstructured[docx, pdf] 
-unstructured-pytesseract 
+PyMuPDF
+python-docx
+beautifulsoup4
+selenium
+pytesseract
+Pillow
+python-magic
+jsonschema
+camelot-py
+pandas
 ipywidgets 

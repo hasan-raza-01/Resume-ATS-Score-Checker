@@ -1,6 +1,7 @@
 from src.ats.exception import CustomException
 from pathlib import Path
 from box import ConfigBox
+from io import TextIOWrapper
 import sys, yaml, os, json, pickle, shutil, re 
 
 
@@ -111,7 +112,13 @@ def load_pickle(path:str)-> object:
     except Exception as e:
         raise CustomException(e, sys)
     
-def save_file(content:str, path:Path) -> None:
+def save_file(content:str | TextIOWrapper, path:Path) -> None: 
+    """saves content into file at given path
+
+    Args:
+        content (str | TextIOWrapper): string content of to write inside file or iowrapper to copy object from memory
+        path (Path): destination path for content to be saved inside the file
+    """
     try:
         binary_ext = [".pdf", ".docx", ".html", ] 
         file_path, file_name = os.path.split(path)

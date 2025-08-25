@@ -1,8 +1,6 @@
 # update __all__ also inside __init__ 
 
-from unstructured.partition.pdf import partition_pdf
-from unstructured.partition.docx import partition_docx 
-from unstructured.partition.html import partition_html 
+from .parsers import *
 from src.ats.utils import save_file, create_dirs
 from src.ats.exception import CustomException 
 from dataclasses import dataclass 
@@ -61,7 +59,7 @@ class DataIngestionComponents:
                     else:
                         save_file(file.file.read(), path)
                     del ext
-                    logging.info(f"\'{file_name}\' saved at \'{path}\'")
+                    logging.info(f"stagged \'{file_name}\'")
                     output[file_name] = path 
             else: 
                 raise ValueError(f"{files_len} files recieved.")
@@ -114,99 +112,93 @@ class DataIngestionComponents:
             for file_name in info.keys():
                 logging.info(f"parsing \'{file_name}\'")
                 ext = os.path.splitext(file_name)[1].lower()
-                # get partitioner 
+                # get parser 
                 if ext == ".pdf":
-                    partition = partition_pdf 
-                    partitioner_type = "partition_pdf"
+                    parser = PDFParser()
                 elif ext == ".docx":
-                    partition = partition_docx
-                    partitioner_type = "partition_docx"
+                    parser = DOCXParser()
                 elif ext == ".html":
-                    partition = partition_html
-                    partitioner_type = "partition_html"
+                    parser = HTMLParser()
                 else:
                     raise ValueError(f"Unsupported file type: {file_name}") 
-                logging.info(f"using \'{partitioner_type}\'") 
-                del partitioner_type
+                logging.info(f"using \'{parser.__class__.__name__}\'")
                 path = info[file_name]
-                logging.info(f"path of file for partitioning \'{path}\'") 
-                elements = partition(path)
-                del partition 
-                elements_string = "\n\n".join([str(el) for el in elements]) 
-                del elements 
-                logging.info("partitioning complete.")
+                logging.info(f"path of file for parsing \'{path}\'") 
+                extracted_data = parser.parse(path)
+                del parser
+                logging.info("parsing complete.")
                 # save file to local 
                 path = os.path.join(self.data_ingestion_config.PARSED_DATA_DIR_PATH, file_name)
-                save_file(elements_string, path) 
-                logging.info(f"\'{file_name}\' saved at \'{path}\'")
+                save_file(extracted_data, path) 
+                logging.info(f"parsed \'{file_name}\'")
                 del path, ext 
-                output[file_name] = elements_string 
-                del elements_string 
+                output[file_name] = extracted_data 
+                del extracted_data 
             logging.info("Out __parse") 
             return output 
         except Exception as e: 
             logging.error(e) 
             raise CustomException(e, sys) 
         
-    def __clean(self, info:Dict[str, str]) -> Dict[str, str]: 
-        """removes punctuations from parsed data 
+    # def __clean(self, info:Dict[str, str]) -> Dict[str, str]: 
+    #     """removes punctuations from parsed data 
 
-        Args:
-            info (Dict[str, str]): 
+    #     Args:
+    #         info (Dict[str, str]): 
             
-                key = name of file 
+    #             key = name of file 
 
-                value = string object of parsed data  
+    #             value = string object of parsed data  
 
-                example:
-                info = {
-                    "xyz.pdf" : "string_parsed_data_of_xyz.pdf", 
-                    "abc.docx": "string_parsed_data_of_abc.docx", 
-                    ...
-                } 
-                output = __clean(info)
+    #             example:
+    #             info = {
+    #                 "xyz.pdf" : "string_parsed_data_of_xyz.pdf", 
+    #                 "abc.docx": "string_parsed_data_of_abc.docx", 
+    #                 ...
+    #             } 
+    #             output = __clean(info)
 
-        Returns:
-            Dict: 
-            key = name of file 
+    #     Returns:
+    #         Dict: 
+    #         key = name of file 
 
-            value = cleaned string object of parsed data  
+    #         value = cleaned string object of parsed data  
 
-            example:
-            output = __clean(info)
-            output = {
-                "xyz.pdf" : "cleaned_string_parsed_data_of_xyz.pdf", 
-                "abc.docx": "cleaned_string_parsed_data_of_abc.docx", 
-                ...
-            } 
-            name = output.keys()[0]
-            data = output[name] 
-        """
-        try:
-            logging.info("In __clean") 
-            output = {} 
-            for file_name in info.keys():
-                logging.info(f"cleaning \'{file_name}\'")
-                new_line_char = " mmmmmmm " 
-                elements_string = info[file_name]
-                elements_string = elements_string.replace("\n", new_line_char)
-                # elements_string = re.sub(r'–', '-', elements_string) 
-                for i in punctuation+'–': 
-                    elements_string = elements_string.replace(i, " ") 
-                elements_string = " ".join(elements_string.split())
-                elements_string = elements_string.replace(new_line_char.strip(), "\n") 
-                del new_line_char 
-                # save file to local 
-                path = os.path.join(self.data_ingestion_config.FINAL_DATA_DIR_PATH, file_name)
-                save_file(elements_string, path) 
-                logging.info(f"\'{file_name}\' saved at \'{path}\'")
-                output[file_name] = elements_string 
-                del elements_string 
-            logging.info("Out __clean") 
-            return output
-        except Exception as e: 
-            logging.error(e) 
-            raise CustomException(e, sys) 
+    #         example:
+    #         output = __clean(info)
+    #         output = {
+    #             "xyz.pdf" : "cleaned_string_parsed_data_of_xyz.pdf", 
+    #             "abc.docx": "cleaned_string_parsed_data_of_abc.docx", 
+    #             ...
+    #         } 
+    #         name = output.keys()[0]
+    #         data = output[name] 
+    #     """
+    #     try:
+    #         logging.info("In __clean") 
+    #         output = {} 
+    #         for file_name in info.keys():
+    #             logging.info(f"cleaning \'{file_name}\'")
+    #             new_line_char = " mmmmmmm " 
+    #             elements_string = info[file_name]
+    #             elements_string = elements_string.replace("\n", new_line_char)
+    #             # elements_string = re.sub(r'–', '-', elements_string) 
+    #             for i in punctuation+'–': 
+    #                 elements_string = elements_string.replace(i, " ") 
+    #             elements_string = " ".join(elements_string.split())
+    #             elements_string = elements_string.replace(new_line_char.strip(), "\n") 
+    #             del new_line_char 
+    #             # save file to local 
+    #             path = os.path.join(self.data_ingestion_config.FINAL_DATA_DIR_PATH, file_name)
+    #             save_file(elements_string, path) 
+    #             logging.info(f"cleaned parsed content of \'{file_name}\'")
+    #             output[file_name] = elements_string 
+    #             del elements_string 
+    #         logging.info("Out __clean") 
+    #         return output
+    #     except Exception as e: 
+    #         logging.error(e) 
+    #         raise CustomException(e, sys) 
 
     def _main(self, files: List[UploadFile]) -> Dict[str, str]: 
         """runs data ingestion components 
@@ -236,8 +228,9 @@ class DataIngestionComponents:
         create_dirs(self.data_ingestion_config.INGESTION_ROOT_DIR_PATH)
         create_dirs(self.data_ingestion_config.RAW_DATA_DIR_PATH)
         create_dirs(self.data_ingestion_config.PARSED_DATA_DIR_PATH)
-        create_dirs(self.data_ingestion_config.FINAL_DATA_DIR_PATH)
-        # return output 
-        return self.__clean(self.__parse(self.__load(files))) 
+        # create_dirs(self.data_ingestion_config.FINAL_DATA_DIR_PATH)
+        # return the final output 
+        # return self.__clean(self.__parse(self.__load(files)))
+        return self.__parse(self.__load(files))
     
 __all__ = ["DataIngestionComponents"]
