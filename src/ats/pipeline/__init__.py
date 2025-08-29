@@ -18,20 +18,20 @@ class DataIngestionPipeline:
             files (List[UploadFile]): list object of fastapi.UploadFile / files that have been uploaded
 
         Returns:
-            Dict: 
-            key = name of file 
-
-            value = cleaned string object of parsed data  
+            Dict: shown below
 
             example:
-            output = _run(files)
-            output = {
-                "xyz.pdf" : "cleaned_string_parsed_data_of_xyz.pdf", 
-                "abc.docx": "cleaned_string_parsed_data_of_abc.docx", 
-                ...
+            schema = _main(info)
+            schema = {
+                "path": path/of/the/file/in/disk,
+                "size": size of the file in disk,
+                "binary_content_size": total number of binary digits inside file (len(origin_data)),
+                "base64_content_size": total number of base64 digits after converting from bytes to base64 string (len(base64_data))
             } 
-            name = output.keys()[0]
-            data = output[name] 
+            file_path = schema["path"]
+            file_size = schema["size"]
+            original_content_size = schema["binary_content_size"]
+            converted_content_size = schema["base64_content_size"]
         """
         components = DataIngestionComponents(DataIngestionConfig) 
         return components._main(files) 

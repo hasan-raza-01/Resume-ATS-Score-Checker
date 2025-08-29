@@ -27,7 +27,7 @@ app.add_middleware(
 @app.get("/health", tags=["health"])
 async def health_check():
     return Response(
-        content="Running.....",
+        content="App is running perfectly fine.",
         status_code=200,
         headers={
             "status": "ok",
@@ -40,10 +40,9 @@ async def health_check():
 async def upload(files:List[UploadFile] = File(...)):
     try:
         ingestion_pipeline = DataIngestionPipeline()
-        ingestion_pipeline._run(files)
+        schema = ingestion_pipeline._run(files)
         return Response("upload successfully completed.")
     except Exception as e:
-        print(e)
         return Response(str(e), 500)
 
 

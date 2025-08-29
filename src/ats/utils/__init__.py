@@ -2,7 +2,7 @@ from src.ats.exception import CustomException
 from pathlib import Path
 from box import ConfigBox
 from io import TextIOWrapper
-import sys, yaml, os, json, pickle, shutil, re 
+import sys, yaml, os, json, pickle, shutil, re, base64
 
 
 
@@ -55,12 +55,9 @@ def dump_json(data:dict, path:str)->None:
         path (str): path to save the file
     """
     try:
-        # Serializing json
-        json_object = json.dumps(data, indent=4)
-
         # Writing to sample.json
         with open(Path(path), "w") as outfile:
-            outfile.write(json_object)
+            json.dump(data, outfile, default=str, indent=4)
     except Exception as e:
         raise CustomException(e, sys)
     
@@ -112,7 +109,7 @@ def load_pickle(path:str)-> object:
     except Exception as e:
         raise CustomException(e, sys)
     
-def save_file(content:str | TextIOWrapper, path:Path) -> None: 
+def save_file(content:str | TextIOWrapper, path:Path) -> str | Exception: 
     """saves content into file at given path
 
     Args:
@@ -147,9 +144,7 @@ def save_file(content:str | TextIOWrapper, path:Path) -> None:
                     start, end = len(file_name_without_ext)-3, len(file_name_without_ext)
                     file_name = file_name_without_ext[:file_name_without_ext.index(element, start, end)-1] + f"({int(element) + 1})" + ext
                     path = os.path.join(file_path, file_name)
-                    del element 
                 path = Path(path)
-                del file_name, file_name_without_ext
                 file_name = os.path.split(path)[-1] 
                 file_name_without_ext = os.path.splitext(file_name)[0]
         if isinstance(content, str):
@@ -157,5 +152,35 @@ def save_file(content:str | TextIOWrapper, path:Path) -> None:
         else:
             shutil.copyfileobj(content, io)
         io.close() 
+        return file_name
     except Exception as e:
-        raise CustomException(e, sys) 
+        return e
+
+def bytes_to_b64str(b: bytes) -> str:
+    """encodes bytes into string
+
+    Args:
+        b (bytes): bytes to convert into base64 string
+
+    Returns:
+        str: string value of base64 encodings
+    """
+    try:
+        return base64.b64encode(b).decode('ascii')  # ASCII-only output
+    except Exception as e:
+        return e
+
+def b64str_to_bytes(s: str) -> bytes:
+    """decodes string back to bytes
+
+    Args:
+        s (str): string value of base64 encodings to convert back into bytes through base64 decoding
+
+    Returns:
+        bytes: original bytes
+    """
+    try:
+        return base64.b64decode(s, validate=True)
+    except Exception as e:
+            return e
+

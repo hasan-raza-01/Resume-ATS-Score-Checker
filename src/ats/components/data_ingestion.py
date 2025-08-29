@@ -1,23 +1,28 @@
 # update __all__ also inside __init__ 
+from dotenv import load_dotenv 
+load_dotenv()
 
 from .parsers import *
-from src.ats.utils import save_file, create_dirs
+from src.ats.utils import save_file, create_dirs, dump_json, bytes_to_b64str, load_json
 from src.ats.exception import CustomException 
 from dataclasses import dataclass 
 from src.ats import logging 
 from fastapi import UploadFile 
-from string import punctuation 
 from src.ats.entity import * 
-from pathlib import Path 
 from typing import Dict, List 
-import sys, os 
+import sys, os, pymongo
+from copy import deepcopy
+from datetime import datetime
 
 
 @dataclass
 class DataIngestionComponents: 
-    data_ingestion_config: DataIngestion 
+    data_ingestion_config: DataIngestion
+    
+    def __post_init__(self) -> None: 
+        self.supported_ext = [".pdf", ".docx", ".html", ]
 
-    def __load(self, files:List[UploadFile]) -> Dict[str, Path]: 
+    def __load(self, files:List[UploadFile]) -> Dict[str, Dict[str, str]]: 
         """loads data, stores locally and returns name with path
 
         Args:
@@ -30,207 +35,232 @@ class DataIngestionComponents:
             Dict:
             key = name of file 
 
-            value = path of file 
+            value = dict of keys path, status, error(optional) 
 
             example:
             output = __load(files)
             output = {
-                "xyz.pdf" : "path\\to\\the\\file", 
-                "abc.docx": "path\\to\\the\\file", 
+                "xyz.pdf": {
+                    path : "path/to/the/file", 
+                    status: True | False, 
+                    error(optional): error_details
+                }, 
+                "abc.docx": {
+                    path : "path/to/the/file", 
+                    status: True | False, 
+                    error(optional): error_details
+                } 
                 ...
             } 
             name = output.keys()[0]
-            path = output[name]
+            file_info = output[name] 
+            path = file_info["path"]
+            status = file_info["status"]
+            error = file_info["error"]
         """
         try:
             logging.info("In __load")
             files_len = len(files)
             if files_len > 0: 
-                output = {} 
+                output = {}
                 for file in files:
                     file_name = file.filename 
                     file_name = file_name.strip().lower() 
                     logging.info(f"working with \'{file_name}\'")
                     path = os.path.join(self.data_ingestion_config.RAW_DATA_DIR_PATH, file_name)
-                    # save file to local 
+                    # save file
+                    res = save_file(file.file, path)
+                    # check weather file is supported or not
                     ext = os.path.splitext(file_name)[-1].lower()
-                    if ext == ".pdf" or ext == ".docx" or ext == ".html":
-                        save_file(file.file, path) 
-                    else:
-                        save_file(file.file.read(), path)
+                    if not ext in self.supported_ext:
+                        raise ValueError(f"Unsupported file type: {file_name}")
                     del ext
                     logging.info(f"stagged \'{file_name}\'")
-                    output[file_name] = path 
+                    if isinstance(res, Exception):
+                        output[file_name] = {"path": path, "status": False, "error": str(res)}
+                    else:
+                        dir_path, file_name = os.path.split(path)
+                        file_name = res
+                        path = os.path.join(dir_path, file_name)
+                        output[file_name] = {"path": path, "status": True}
             else: 
                 raise ValueError(f"{files_len} files recieved.")
+            # persist report to disk 
+            report_path = os.path.join(self.data_ingestion_config.REPORTS_DIR_PATH, "__load.json")
+            if os.path.exists(report_path): 
+                prev_data = load_json(report_path)
+                prev_data[datetime.now().strftime("%H_%M_%S")] = output
+                dump_json(prev_data, report_path)
+                del prev_data
+            else:
+                dump_json({datetime.now().strftime("%H_%M_%S"):output}, report_path)
+            logging.info(f"report saved at {report_path}")
             logging.info("Out __load")
             return output 
         except Exception as e: 
             logging.error(e) 
             raise CustomException(e, sys) 
         
-    def __parse(self, info:Dict[str, Path]) -> Dict[str, str]: 
-        """parse the data of file through unstructured, supported extentions ---> [ .pdf, .docx, .html ]
+    def __format(self, info:Dict[str, Dict[str, str]]) -> Dict[str, List[Dict[str, str]] | Dict[str, str | int]]: 
+        """format data to insert into mongodb
 
         Args:
-            info (Dict[str, Path]): 
-
-                key = name of file 
-
-                value = path of file 
-
-                example:
-                info = {
-                    "xyz.pdf" : "path\\to\\the\\file", 
-                    "abc.docx": "path\\to\\the\\file", 
-                    ...
-                } 
-                output = __parse(info)
-
-        Raises:
-            ValueError: if provided file with uncompatable format as argument 
+            info (Dict[str, Dict[str, str]]): dictionary with key as name of the file and value as another dictionary with a key named \'path\' containing path of the file
 
         Returns:
-            Dict: 
-            key = name of file 
-
-            value = string object of parsed data  
+            
+            List[Dict[str, str]]: list of json with name of file as key and base64 string as value.
 
             example:
-            output = __parse(info)
+            output = __format(info)
             output = {
-                "xyz.pdf" : "string_parsed_data_of_xyz.pdf", 
-                "abc.docx": "string_parsed_data_of_abc.docx", 
-                ...
-            } 
-            name = output.keys()[0]
-            data = output[name] 
+                "info": [
+                        {
+                            "name":"3.pdf",
+                            "data": "JVBERi0xLjcNCiW1tbW1DQoxIDAgb2Jq.......", 
+                            ...
+                        }
+                    ]
+                "schema": {
+                    "path": path/of/the/file/in/disk,
+                    "size": size of the file in disk,
+                    "binary_content_size": total number of binary digits inside file (len(origin_data)),
+                    "base64_content_size": total number of base64 digits after converting from bytes to base64 string (len(base64_data))
+                }
+            }
+            info = output["info"]
+            file_name = info[0]["name"]
+            base64_string = info[0]["data"] 
         """
         try:
-            logging.info("In __parse")
+            logging.info("In __format") 
             output = {}
+            report = {} 
+            schema = {}
             for file_name in info.keys():
-                logging.info(f"parsing \'{file_name}\'")
-                ext = os.path.splitext(file_name)[1].lower()
-                # get parser 
-                if ext == ".pdf":
-                    parser = PDFParser()
-                elif ext == ".docx":
-                    parser = DOCXParser()
-                elif ext == ".html":
-                    parser = HTMLParser()
-                else:
-                    raise ValueError(f"Unsupported file type: {file_name}") 
-                logging.info(f"using \'{parser.__class__.__name__}\'")
-                path = info[file_name]
-                logging.info(f"path of file for parsing \'{path}\'") 
-                extracted_data = parser.parse(path)
-                del parser
-                logging.info("parsing complete.")
-                # save file to local 
-                path = os.path.join(self.data_ingestion_config.PARSED_DATA_DIR_PATH, file_name)
-                save_file(extracted_data, path) 
-                logging.info(f"parsed \'{file_name}\'")
-                del path, ext 
-                output[file_name] = extracted_data 
-                del extracted_data 
-            logging.info("Out __parse") 
-            return output 
+                logging.info(f"working with file named \'{file_name}\'")
+                path = info[file_name]["path"]
+                report[file_name] = {"path": path}
+                schema[file_name] = {"path": path}
+                try:
+                    with open(path, "rb") as f:
+                        content = f.read()
+                    schema[file_name]["size"] = os.path.getsize(path)
+                    schema[file_name]["binary_content_size"] = len(content)
+                    content = bytes_to_b64str(content)
+                    schema[file_name]["base64_content_size"] = len(content)
+                    if isinstance(content, Exception):
+                        error = deepcopy(content)
+                        content = ""
+                    output[file_name] = content
+                    del content
+                    report[file_name]["status"] = True
+                except IOError as e:
+                    report[file_name]["status"] = False
+                    error = str(e)
+                    report[file_name]["error"] = error
+                    logging.error(f"error: {error}")
+                del file_name, path
+            # persist report to disk 
+            report_path = os.path.join(self.data_ingestion_config.REPORTS_DIR_PATH, "__format.json")
+            if os.path.exists(report_path): 
+                prev_data = load_json(report_path)
+                prev_data[datetime.now().strftime("%H_%M_%S")] = report
+                dump_json(prev_data, report_path)
+                del prev_data
+            else:
+                dump_json({datetime.now().strftime("%H_%M_%S"):report}, report_path)
+            logging.info(f"report saved at {report_path}")
+            # persist schema to disk 
+            schema_path = os.path.join(self.data_ingestion_config.SCHEMA_DATA_DIR_PATH, "resumes.json")
+            dump_json(schema, schema_path)
+            logging.info(f"schema saved at {schema_path}")
+            logging.info("Out __format") 
+            final_output = [{"name":key, "data":value} for key, value in output.items()]
+            return {
+                "info": final_output, 
+                "schema": schema
+            }
         except Exception as e: 
             logging.error(e) 
             raise CustomException(e, sys) 
         
-    # def __clean(self, info:Dict[str, str]) -> Dict[str, str]: 
-    #     """removes punctuations from parsed data 
+    def __connect(self, uri:str) -> bool:
+        """tries to connects with mongodb at given uri and return status
 
-    #     Args:
-    #         info (Dict[str, str]): 
+        Args:
+            uri (str): mongodb uri for connection
+
+        Returns:
+            bool: True if successful else False
+        """
+        try:
+            self.client = pymongo.MongoClient(uri, server_api=pymongo.server_api.ServerApi('1'))
+            self.database = self.client["XYZ-company"]
+            self.collection = self.database["Resumes"] 
+
+            # Send a ping to confirm a successful connection
+            self.client.admin.command('ping')
+            logging.info(f"connection successfull with database \'{self.database.name}\' and collection \'{self.collection.name}\'")
+            return True
+        except Exception as e: 
+            logging.error(e)
+            print(e)
+            return False
             
-    #             key = name of file 
+    def __ingest(self, info:List[Dict[str, str]]) -> None: 
+        """Ingest data into mongodb if the connection is successfull
 
-    #             value = string object of parsed data  
+        Args:
+            info (List[Dict[str, str]]): list of dictionary for insertion
+        """
+        try:
+            logging.info("In __ingest") 
+            connected = self.__connect(os.getenv("MONGODB_URI"))
+            if connected:
+                self.collection.insert_many(info)
+                logging.info("Data insertion completed")
+            logging.info("Out __ingest") 
+        except Exception as e: 
+            logging.error(e) 
+            raise CustomException(e, sys) 
 
-    #             example:
-    #             info = {
-    #                 "xyz.pdf" : "string_parsed_data_of_xyz.pdf", 
-    #                 "abc.docx": "string_parsed_data_of_abc.docx", 
-    #                 ...
-    #             } 
-    #             output = __clean(info)
 
-    #     Returns:
-    #         Dict: 
-    #         key = name of file 
-
-    #         value = cleaned string object of parsed data  
-
-    #         example:
-    #         output = __clean(info)
-    #         output = {
-    #             "xyz.pdf" : "cleaned_string_parsed_data_of_xyz.pdf", 
-    #             "abc.docx": "cleaned_string_parsed_data_of_abc.docx", 
-    #             ...
-    #         } 
-    #         name = output.keys()[0]
-    #         data = output[name] 
-    #     """
-    #     try:
-    #         logging.info("In __clean") 
-    #         output = {} 
-    #         for file_name in info.keys():
-    #             logging.info(f"cleaning \'{file_name}\'")
-    #             new_line_char = " mmmmmmm " 
-    #             elements_string = info[file_name]
-    #             elements_string = elements_string.replace("\n", new_line_char)
-    #             # elements_string = re.sub(r'–', '-', elements_string) 
-    #             for i in punctuation+'–': 
-    #                 elements_string = elements_string.replace(i, " ") 
-    #             elements_string = " ".join(elements_string.split())
-    #             elements_string = elements_string.replace(new_line_char.strip(), "\n") 
-    #             del new_line_char 
-    #             # save file to local 
-    #             path = os.path.join(self.data_ingestion_config.FINAL_DATA_DIR_PATH, file_name)
-    #             save_file(elements_string, path) 
-    #             logging.info(f"cleaned parsed content of \'{file_name}\'")
-    #             output[file_name] = elements_string 
-    #             del elements_string 
-    #         logging.info("Out __clean") 
-    #         return output
-    #     except Exception as e: 
-    #         logging.error(e) 
-    #         raise CustomException(e, sys) 
-
-    def _main(self, files: List[UploadFile]) -> Dict[str, str]: 
+    def _main(self, files: List[UploadFile]) -> Dict[str, str | int]: 
         """runs data ingestion components 
 
         Args:
             files (List[UploadFile]): list object of fastapi.UploadFile / files that have been uploaded
 
         Returns:
-            Dict: 
-            key = name of file 
-
-            value = cleaned string object of parsed data  
+            Dict: shown below
 
             example:
-            output = _main(info)
-            output = {
-                "xyz.pdf" : "cleaned_string_parsed_data_of_xyz.pdf", 
-                "abc.docx": "cleaned_string_parsed_data_of_abc.docx", 
-                ...
+            schema = _main(info)
+            schema = {
+                "path": path/of/the/file/in/disk,
+                "size": size of the file in disk,
+                "binary_content_size": total number of binary digits inside file (len(origin_data)),
+                "base64_content_size": total number of base64 digits after converting from bytes to base64 string (len(base64_data))
             } 
-            name = output.keys()[0]
-            data = output[name] 
+            file_path = schema["path"]
+            file_size = schema["size"]
+            original_content_size = schema["binary_content_size"]
+            converted_content_size = schema["base64_content_size"]
         """
         # create required dir's 
         create_dirs(self.data_ingestion_config.ROOT_DIR_PATH)
+        create_dirs(self.data_ingestion_config.REPORTS_DIR_PATH)
+        create_dirs(self.data_ingestion_config.SCHEMA_DATA_DIR_PATH)
         create_dirs(self.data_ingestion_config.DATA_ROOT_DIR_PATH)
         create_dirs(self.data_ingestion_config.INGESTION_ROOT_DIR_PATH)
         create_dirs(self.data_ingestion_config.RAW_DATA_DIR_PATH)
-        create_dirs(self.data_ingestion_config.PARSED_DATA_DIR_PATH)
-        # create_dirs(self.data_ingestion_config.FINAL_DATA_DIR_PATH)
-        # return the final output 
-        # return self.__clean(self.__parse(self.__load(files)))
-        return self.__parse(self.__load(files))
+        # return back output 
+        info = self.__load(files)
+        output = self.__format(info)
+        info = output["info"]
+        schema = output["schema"]
+        self.__ingest(info)
+        return schema
     
 __all__ = ["DataIngestionComponents"]
