@@ -17,3 +17,7 @@ jsonschema
 camelot-py
 pandas
 ipywidgets 
+firecrawl-py
+langchain-google-genai
+python-dateutil
+aiofiles

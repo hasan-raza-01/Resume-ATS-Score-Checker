@@ -1,186 +1,68 @@
-from src.ats.exception import CustomException
 from pathlib import Path
-from box import ConfigBox
-from io import TextIOWrapper
-import sys, yaml, os, json, pickle, shutil, re, base64
+from src.ats.exception import CustomException
+import re, aiofiles, sys
 
-
-
-def create_dirs(path:str)->None:
-    """creates directory if path do not exists
-
-    Args:
-        path (str): directory path for creation
-    """
-    try:
-        os.makedirs(Path(path), exist_ok=True)
-    except Exception as e:
-        raise CustomException(e, sys)
-    
-
-def load_yaml(path:str)->ConfigBox:
-    """reads the yaml file available in path
-
-    Args:
-        path (str): path of the yaml file
-
-    Returns:
-        ConfigBox: dict["key"] = value --------->  dict.key = value
-    """
-    try:
-        with open(Path(path), "r") as yaml_file_obj:
-            return ConfigBox(yaml.safe_load(yaml_file_obj))
-    except Exception as e:
-        raise CustomException(e, sys)
-    
-
-def dump_yaml(content:any, file_path:str)->None:
-    """saves the yaml file with provided content
-
-    Args:
-        content (any): content for the yaml file
-        path (str): path to save the file
-    """
-    try:
-        with open(Path(file_path), "w") as file:
-            yaml.safe_dump(content, file)
-    except Exception as e:
-        raise CustomException(e, sys)
-    
-def dump_json(data:dict, path:str)->None:
-    """saves the dictoanary into json file
-
-    Args:
-        data (dict): dictionary data to save in form of json
-        path (str): path to save the file
-    """
-    try:
-        # Writing to sample.json
-        with open(Path(path), "w") as outfile:
-            json.dump(data, outfile, default=str, indent=4)
-    except Exception as e:
-        raise CustomException(e, sys)
-    
-def load_json(path:str)->dict:
-    """reads the data present inside the file provided in \'path\' variable
-
-    Args:
-        path (str): path of the json file
-
-    Returns:
-        json: json of data inside file
-    """
-    try:
-        # Opening JSON file
-        with open(Path(path), 'r') as openfile:
-
-            # Reading from json file
-            json_object = json.load(openfile)
-            return json_object
-    except Exception as e:
-        raise CustomException(e, sys)
-    
-def save_pickle(path:str, object:object)-> None:
-    """saves the object into .h5 file
-
-    Args:
-        path (str): path to save the object
-        object (object): object to be saved
-    """
-    try:
-        with open(Path(path), "wb") as file_obj:
-            pickle.dump(object, file_obj)
-    except Exception as e:
-        raise CustomException(e, sys)
-    
-def load_pickle(path:str)-> object:
-    """load the object present at path with pickle and return
-
-    Args:
-        path (str): path for the object
-
-    Returns:
-        object: object at path will be returned
-    """
-    try:
-        with open(Path(path), "rb") as file_obj:
-            obj = pickle.load(file_obj)
-            return obj
-    except Exception as e:
-        raise CustomException(e, sys)
-    
-def save_file(content:str | TextIOWrapper, path:Path) -> str | Exception: 
+async def asave_file(content:str | bytes, path:Path) -> Path | Exception: 
     """saves content into file at given path
 
     Args:
-        content (str | TextIOWrapper): string content of to write inside file or iowrapper to copy object from memory
-        path (Path): destination path for content to be saved inside the file
+        content (str | bytes): string content of to write inside file or bytes
+        path (Path): destination path for content to be saved
+
+    Raises:
+        TypeError: incorrect type for \'content\'
+        TypeError: incorrect type for \'path\'
+        ValueError: if \'path\' do not ends with a suffix
+
+    Returns:
+        str | Exception: updated file name or exception occured while performing operation
     """
     try:
-        binary_ext = [".pdf", ".docx", ".html", ] 
-        file_path, file_name = os.path.split(path)
-        create_dirs(file_path)
-        ext = os.path.splitext(file_name)[-1].lower() 
-        if isinstance(content, str) and "raw" not in path:
-            ext = ext.replace(".", "_") + ".txt"
-        if "."+ext.split(".")[-1] in binary_ext:
+        # type validation
+        # ------------------
+        # content
+        if isinstance(content, str):
+            mode = "wt"
+        elif isinstance(content, bytes):
             mode = "wb"
         else:
-            mode = "wt" 
-        file_name_without_ext = os.path.splitext(file_name)[0]
-        file_name = file_name_without_ext + ext 
-        path = os.path.join(file_path, file_name)
+            raise TypeError(f"arg \'content\' need \'{str}\'/\'{bytes}\' got \'{type(content)}\'")
+        # path
+        if not isinstance(path, Path):
+            raise TypeError(f"arg \'path\' need \'{Path}\' got \'{type(path)}\'")
+        # get absolute path if path is not absolute
+        if not path.is_absolute():
+            path = path.absolute()
+        # raise error if path does not ends with a file
+        if not path.suffix:
+            raise ValueError(f"\'path\' must end with a file with extention.\n\tlike:- path/to/the/directory/file.txt\n\tcurrent path:- {path.as_posix()}")
+        # create path if not available 
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+        # extract vars
+        suffix = path.suffix.strip().lower()
+        # check does wheather data is string and not saving original(bytes) data recieve from user
+        if isinstance(content, str) and "raw" not in path.as_posix():
+            suffix = suffix.replace(".", "_") + ".txt"
+        # update path if extenstion has been changed
+        if suffix != path.suffix.strip().lower():
+            path = path.with_stem(path.stem + Path(suffix).stem).with_suffix(Path(suffix).suffix)
+        # get unique name for file
+        available_files = [e.name for e in path.parent.iterdir() if e.suffix]
         while True:
-            if not os.path.exists(path):
-                io = open(path, mode)
+            if not path.exists() and path.name not in available_files:
                 break
             else: 
-                match_result = re.search(r'\(([1-9]\d*)\)', file_name)
+                match_result = re.search(r'\(([1-9]\d*)\)', path.stem.strip().lower())
                 if not match_result:
-                    file_name = file_name_without_ext + "(1)" + ext 
-                    path = os.path.join(file_path, file_name) 
+                    path = path.with_stem(path.stem + "(1)") 
                 else:
                     element = match_result.group(1) 
-                    start, end = len(file_name_without_ext)-3, len(file_name_without_ext)
-                    file_name = file_name_without_ext[:file_name_without_ext.index(element, start, end)-1] + f"({int(element) + 1})" + ext
-                    path = os.path.join(file_path, file_name)
-                path = Path(path)
-                file_name = os.path.split(path)[-1] 
-                file_name_without_ext = os.path.splitext(file_name)[0]
-        if isinstance(content, str):
-            io.write(content) 
-        else:
-            shutil.copyfileobj(content, io)
-        io.close() 
-        return file_name
+                    start, end = len(path.stem)-(len(element)+2), len(path.stem)
+                    name = path.stem[:path.stem.index(element, start, end)-1] + f"({int(element) + 1})" + suffix
+                    path = path.with_name(name)
+        async with aiofiles.open(path, mode) as file:
+            await file.write(content)
+        return path
     except Exception as e:
-        return e
-
-def bytes_to_b64str(b: bytes) -> str:
-    """encodes bytes into string
-
-    Args:
-        b (bytes): bytes to convert into base64 string
-
-    Returns:
-        str: string value of base64 encodings
-    """
-    try:
-        return base64.b64encode(b).decode('ascii')  # ASCII-only output
-    except Exception as e:
-        return e
-
-def b64str_to_bytes(s: str) -> bytes:
-    """decodes string back to bytes
-
-    Args:
-        s (str): string value of base64 encodings to convert back into bytes through base64 decoding
-
-    Returns:
-        bytes: original bytes
-    """
-    try:
-        return base64.b64decode(s, validate=True)
-    except Exception as e:
-            return e
-
+        raise CustomException(e, sys)

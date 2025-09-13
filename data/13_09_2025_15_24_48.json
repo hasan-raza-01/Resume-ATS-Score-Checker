@@ -1,0 +1,57 @@
+{
+  "X": [
+    "Michael Brown \nEmail: michael.brown@example.com | Phone: (111) 222-3333 | Location: Chicago, IL \nSummary \nRecent Computer Science graduate with a strong foundation in programming and problem-\nsolving. Eager to contribute to a dynamic team and grow as a software developer. \nExperience \nSoftware Development Intern \nTech Innovations Ltd. | Chicago, IL | May 2024 – August 2024 \n• \nAssisted in developing and testing software modules using Python. \n• \nParticipated in daily stand-ups and code reviews. \n• \nLearned about agile development methodologies. \nEducation \nBachelor of Science in Computer Science \nState University of Illinois | Chicago, IL | 2020 – 2024 \n• \nRelevant Coursework: Object-Oriented Programming, Data Structures, Algorithms. \n• \nGPA: 3.7/4.0 \n"
+  ],
+  "y": [
+    {
+      "personal_info": {
+        "name": "Michael Brown",
+        "email": "michael.brown@example.com",
+        "phone": "(111) 222-3333",
+        "location": "Chicago, IL",
+        "linkedin": null
+      },
+      "professional_summary": {
+        "headline": null,
+        "summary": "Recent Computer Science graduate with a strong foundation in programming and problem-solving. Eager to contribute to a dynamic team and grow as a software developer.",
+        "total_experience_years": null,
+        "career_level": null
+      },
+      "work_experience": [
+        {
+          "title": "Software Development Intern",
+          "company": "Tech Innovations Ltd.",
+          "start_date": "May 2024",
+          "end_date": "August 2024",
+          "duration_months": null,
+          "responsibilities": [
+            "Assisted in developing and testing software modules using Python.",
+            "Participated in daily stand-ups and code reviews.",
+            "Learned about agile development methodologies."
+          ],
+          "achievements": null,
+          "technologies_used": null
+        }
+      ],
+      "skills": {
+        "technical": [
+          "Object-Oriented Programming",
+          "Data Structures",
+          "Algorithms",
+          "Python"
+        ],
+        "soft": null,
+        "certifications": null
+      },
+      "education": [
+        {
+          "degree": "Bachelor of Science in Computer Science",
+          "institution": "State University of Illinois",
+          "graduation_year": 2024,
+          "gpa": "3.7/4.0"
+        }
+      ],
+      "keywords": null
+    }
+  ]
+}

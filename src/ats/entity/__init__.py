@@ -1,15 +1,27 @@
 # update __all__ 
 
-from dataclasses import dataclass
+from pydantic import BaseModel
+from datetime import datetime
 from pathlib import Path 
 
-@dataclass
-class DataIngestion:
+
+class DataIngestion(BaseModel):
+    TIME_STAMP: datetime
     ROOT_DIR_PATH: Path
-    REPORTS_DIR_PATH: Path
     DATA_ROOT_DIR_PATH: Path
     INGESTION_ROOT_DIR_PATH: Path
     RAW_DATA_DIR_PATH: Path
-    SCHEMA_DATA_DIR_PATH: Path
+    OUTPUT_DIR_PATH: Path
 
-__all__ = ["DataIngestion", ]
+class DataTransformation(BaseModel):
+    TIME_STAMP: datetime
+    ROOT_DIR_PATH: Path
+    DATA_ROOT_DIR_PATH: Path
+    TRANSFORMATION_ROOT_DIR_PATH: Path
+    PARSED_DATA_DIR_PATH: Path
+    STRUCTURED_DATA_DIR_PATH: Path
+    TRAIN_DATA_DIR_PATH: Path
+    OUTPUT_DIR_PATH: Path
+
+
+__all__ = ["DataIngestion", "DataTransformation", ]

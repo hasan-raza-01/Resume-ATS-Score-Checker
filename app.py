@@ -17,7 +17,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # set specific origins in prod
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,7 +40,12 @@ async def health_check():
 async def upload(files:List[UploadFile] = File(...)):
     try:
         ingestion_pipeline = DataIngestionPipeline()
-        schema = ingestion_pipeline._run(files)
+        info = await ingestion_pipeline.run(files)
+        print(info)
+        transformation_pipeline = DataTransformationPipeline()
+        structured_data, info = await transformation_pipeline.run(info)
+        print(info)
+        print(structured_data)
         return Response("upload successfully completed.")
     except Exception as e:
         return Response(str(e), 500)

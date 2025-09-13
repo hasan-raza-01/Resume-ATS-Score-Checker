@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Heavy JS Resume</title>
+<script>
+// Simulating heavy JS by creating lots of DOM elements and dynamic content
+function generateContent() {
+    const content = [
+        "Highly accomplished and results-oriented Senior Software Engineer with 8+ years of experience in designing, developing, and deploying scalable full-stack applications.",
+        "Proven ability to lead cross-functional teams, mentor junior developers, and deliver complex projects on time and within budget.",
+        "Expertise in cloud-native architectures, microservices, and agile methodologies.",
+        "Passionate about leveraging cutting-edge technologies to solve challenging business problems and drive innovation.",
+        "Programming Languages: Python (Expert), JavaScript (Expert), TypeScript (Advanced), Go (Intermediate), Java (Intermediate)",
+        "Front-End: React.js, Next.js, Vue.js, Angular, HTML5, CSS3, Tailwind CSS, Bootstrap, Redux, Context API",
+        "Back-End: Node.js, Express.js, Django, Flask, Spring Boot, RESTful APIs, GraphQL",
+        "Databases: PostgreSQL, MongoDB, MySQL, Redis, DynamoDB",
+        "Cloud Platforms: AWS (EC2, S3, Lambda, RDS, SQS, SNS), Google Cloud Platform (GCP), Azure",
+        "Tools & Methodologies: Git, Docker, Kubernetes, Jenkins, CI/CD, Agile (Scrum/Kanban), TDD, Microservices, Serverless",
+        "Innovate Solutions Inc. | Seattle, WA | January 2020 – Present",
+        "Global Tech Corp | San Jose, CA | August 2017 – December 2019",
+        "Technologies: AWS Lambda, DynamoDB, API Gateway, React.js, Serverless Framework",
+        "Technologies: Python, TensorFlow, Flask, PostgreSQL, Docker",
+        "University of California, Berkeley | Berkeley, CA | 2016 – 2017",
+        "Georgia Institute of Technology | Atlanta, GA | 2012 – 2016",
+        "Girls Who Code | Remote | September 2020 – Present"
+    ];
+
+    const container = document.getElementById('content');
+    // Clear container
+    container.innerHTML = '';
+
+    for (let i = 0; i < 1000; i++) {
+        // Create paragraphs multiplied to simulate heavy js and rendering
+        content.forEach(line => {
+            const p = document.createElement('p');
+            p.textContent = line + ' (Instance ' + (i+1) + ')';
+            container.appendChild(p);
+        });
+    }
+}
+
+window.onload = generateContent;
+</script>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+p { margin: 4px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+<h1>Resume Content Loaded via Heavy JavaScript</h1>
+<div id="content">Loading content...</div>
+</body>
+</html>

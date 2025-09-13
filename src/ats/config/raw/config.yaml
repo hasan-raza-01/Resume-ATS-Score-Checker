@@ -1,9 +1,19 @@
 ROOT_DIR: artifacts 
-REPORTS: 
-    ROOT_DIR: reports
+
+STRUCTURED_TRAINING:
+    ROOT_DIR: data
+
 DATA: 
     ROOT_DIR: data 
+
     INGESTION: 
         ROOT_DIR: ingestion 
         RAW_DATA_DIR: raw 
-        SCHEMA_DATA_DIR: schema 
+        OUTPUT_DIR: output 
+        
+    TRANSFORMATION: 
+        ROOT_DIR: transformation 
+        PARSED_DATA_DIR: parsed 
+        STRUCTURED_DATA_DIR: structured 
+        OUTPUT_DIR: output
+        

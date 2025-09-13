@@ -1,14 +1,20 @@
 # update required on 'Note: Available name' inside docstring of fuction 'load_constants' 
-# update __all__ 
+# update __all__ if needed
 
-from .values import *
-from src.ats.utils import load_yaml
+import os, yaml, aiofiles, asyncio
+from box import ConfigBox
 from typing import Dict 
-import os 
+from .values import *
 
 
+async def get_config(path):
+    async with aiofiles.open(path) as f:
+        content = await f.read()
+    dict_content = await asyncio.get_event_loop().run_in_executor(None, yaml.safe_load, content)
+    return ConfigBox(dict_content)
 
-CONFIG = load_yaml(os.path.join("src", "ats", "config", "raw", "config.yaml")) 
+path = os.path.join("src", "ats", "config", "raw", "config.yaml")
+CONFIG = asyncio.run(get_config(path))
 
 def load_constants(name: str | list[str] | tuple[str]) -> Dict:
     """loads respective constants for the given name
@@ -16,7 +22,7 @@ def load_constants(name: str | list[str] | tuple[str]) -> Dict:
     Args:
         name (str | list[str] | tuple[str]): name of required object 
 
-        Note: Available name --> DataIngestion, 
+        Note: Available names --> DataIngestion, DataTransformation,
 
     Returns:
         Dict: key = name of object used to load given in variable \'name\', 
@@ -31,4 +37,4 @@ def load_constants(name: str | list[str] | tuple[str]) -> Dict:
     return load(CONFIG, name)
 
 
-__all__ = ["load_constants", "CONFIG"]
+__all__ = ["load_constants", ]

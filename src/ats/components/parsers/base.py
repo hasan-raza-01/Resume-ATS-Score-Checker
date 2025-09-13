@@ -6,11 +6,11 @@ from pathlib import Path
 class BaseParser(ABC):
     """Base class for all document parsers"""
     
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging
-    
+        
     @abstractmethod
-    def parse(self, file_path: Path) -> str:
+    async def parse(self, path: Path) -> str:
         """Parse document and return canonical representation"""
         pass
     

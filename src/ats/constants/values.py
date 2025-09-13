@@ -5,23 +5,43 @@
 from .schema import *
 from src.ats.exception import CustomException 
 from typing import List, Tuple, Dict
+from datetime import datetime
 from box import ConfigBox
 import sys 
 
 
-def __ing__(CONFIG:ConfigBox):
+def __ing__(CONFIG:ConfigBox) -> Constants:
     return DataIngestionConstants(
+        TIME_STAMP = datetime.now(),
         ROOT_DIR_NAME = CONFIG.ROOT_DIR, 
-        REPORTS_DIR_NAME = CONFIG.REPORTS.ROOT_DIR,
         DATA_ROOT_DIR_NAME = CONFIG.DATA.ROOT_DIR, 
         INGESTION_ROOT_DIR_NAME = CONFIG.DATA.INGESTION.ROOT_DIR, 
         RAW_DATA_DIR_NAME = CONFIG.DATA.INGESTION.RAW_DATA_DIR,
-        SCHEMA_DATA_DIR_NAME = CONFIG.DATA.INGESTION.SCHEMA_DATA_DIR
+        OUTPUT_DIR_NAME = CONFIG.DATA.INGESTION.OUTPUT_DIR
     )
 
-avl_cons = ["DataIngestion", ]
+def __transform__(CONFIG:ConfigBox) -> Constants:
+    return DataTransformationConstants(
+        TIME_STAMP = datetime.now(),
+        ROOT_DIR_NAME = CONFIG.ROOT_DIR , 
+        DATA_ROOT_DIR_NAME = CONFIG.DATA.ROOT_DIR , 
+        TRANSFORMATION_ROOT_DIR_NAME = CONFIG.DATA.TRANSFORMATION.ROOT_DIR , 
+        PARSED_DATA_DIR_NAME = CONFIG.DATA.TRANSFORMATION.PARSED_DATA_DIR ,
+        STRUCTURED_DATA_DIR_NAME = CONFIG.DATA.TRANSFORMATION.STRUCTURED_DATA_DIR ,
+        TRAIN_DATA_DIR_NAME = CONFIG.STRUCTURED_TRAINING.ROOT_DIR,
+        OUTPUT_DIR_NAME = CONFIG.DATA.TRANSFORMATION.OUTPUT_DIR
+    )
+
+dataingestion = "DataIngestion"
+datatransformation = "DataTransformation"
+
+avl_cons = [
+    dataingestion, 
+    datatransformation, 
+]
 process = {
-    "DataIngestion":__ing__
+    dataingestion:__ing__,
+    datatransformation:__transform__
 } 
 
 def load(config:ConfigBox, name: str | List[str] | Tuple[str]) -> Dict: 
@@ -31,7 +51,7 @@ def load(config:ConfigBox, name: str | List[str] | Tuple[str]) -> Dict:
         config (ConfigBox): configuration for the object
         name (str | List[str] | Tuple[str]): name of required object  
 
-        Note: Available name --> DataIngestion, 
+        Note: Available names --> DataIngestion, DataTransformation,  
 
     Raises:
         CustomException: Error shows with file name, line no and error message
@@ -46,7 +66,7 @@ def load(config:ConfigBox, name: str | List[str] | Tuple[str]) -> Dict:
               output = { "DataIngestion" : DataIngestionConstants } 
               data_ingestion_constants = output["DataIngestion"] 
     """
-    reqs = []
+    reqs:List[str] = []
     try:
         # validate type   
         if isinstance(name, str):
@@ -70,6 +90,6 @@ def load(config:ConfigBox, name: str | List[str] | Tuple[str]) -> Dict:
         return output
     except Exception as e: 
         raise CustomException(e, sys) 
-
+    
 
 __all__ = ["load"]

@@ -1,28 +1,57 @@
-import sys
+import sys as SYS
 from src.ats import logging
 
-def get_mssg(mssg, sys_obj):
-    _, _, exc_traceback = sys_obj.exc_info()
-    file_path = exc_traceback.tb_frame.f_code.co_filename
-    line_no = exc_traceback.tb_lineno
-    detail_mssg = f"Error occured !!!! \n\n\t- file: {file_path} \n\t- line: {line_no} \n\t- message: {mssg}"
-
-    return detail_mssg
 
 
 class CustomException(Exception):
-    def __init__(self, mssg, sys_obj):
-        super().__init__(mssg)
-        self.mssg = get_mssg(mssg, sys_obj)
+
+    def __init__(self, message:str | Exception, sys:SYS):
+        self.message = message
+        super().__init__(message)
+        _, _, exc_traceback = sys.exc_info()
+        self.path = exc_traceback.tb_frame.f_code.co_filename
+        self.line = exc_traceback.tb_lineno
+
+    def __str__(self):
+        return f"{self.message} on line {self.line} at {self.path})"
+
+class BaseError(Exception):
+    
+    def __init__(self, rec:str, exp: str) -> None:
+        if not isinstance(rec, str):
+            raise TypeError(f"required \'{str}\' but recieved \'{type(rec)}\'")
+        if not isinstance(exp, str):
+            raise TypeError(f"required \'{str}\' but recieved \'{type(exp)}\'")
+        self.rec = rec 
+        self.exp = exp
+        super().__init__(self.rec, self.exp)
 
     def __str__(self) -> str:
-        return self.mssg
+        return f"{self.__class__.__name__}: expected \'{self.exp}\' but recieved \'{self.rec}\'"
+    
+    
+class FileTypeError(BaseError):
+    "error for unknown file type"
+    pass
 
+class MinFileSizeError(BaseError):
+    "error for minimal file size"
+    pass
+
+class MinContextError(BaseError):
+    "error for minimal context inside file"
+    pass
+
+class ResumeTokenLimitError(Exception):
+    "error for resume token limit"
+    pass 
+
+__all__ = ["CustomException", "FileTypeError", "MinFileSizeError", "MinContextError"]
 
 if __name__=="__main__":
     try:
         1/0
     except Exception as e:
         logging.exception(e)
-        raise CustomException(e, sys)
+        raise CustomException(e, SYS)
 

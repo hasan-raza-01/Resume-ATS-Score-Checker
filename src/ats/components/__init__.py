@@ -1,6 +1,5 @@
 # update __all__ 
 
-from src.ats.components.data_ingestion import * 
-
-
-__all__ = ["DataIngestionComponents", ]
+from .data_ingestion import * 
+from .data_transformation import * 
+from .schema import *
