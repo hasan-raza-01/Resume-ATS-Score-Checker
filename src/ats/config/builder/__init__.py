@@ -1,16 +1,18 @@
 # from src.ats.constants import load_constants 
 # update __all__ also inside __init__ 
 
-from src.ats.constants import *
-from src.ats.entity import *
+from ...constants import *
+from ...entity import *
 from pathlib import Path 
 import os 
 
 
 
-constants = load_constants(["DataIngestion", "DataTransformation"])
+constants = load_constants(["DataIngestion", "DataTransformation", "JobDescription", "Scoring"])
 ingestion = constants["DataIngestion"]
 transformation = constants["DataTransformation"]
+jd = constants["JobDescription"]
+scoring = constants["Scoring"]
 
 
 DataIngestionConfig = DataIngestion(
@@ -37,6 +39,7 @@ DataIngestionConfig = DataIngestion(
 )
 
 DataTransformationConfig = DataTransformation(
+    PROMPT = transformation.PROMPT,
     TIME_STAMP = transformation.TIME_STAMP,
     ROOT_DIR_PATH = Path(
         transformation.ROOT_DIR_NAME),
@@ -66,4 +69,32 @@ DataTransformationConfig = DataTransformation(
         transformation.OUTPUT_DIR_NAME)),
 )
 
-__all__ = ["DataIngestionConfig", "DataTransformationConfig", ]
+JobDescriptionConfig = JobDescription(
+    TIME_STAMP = jd.TIME_STAMP,
+    ROOT_DIR_PATH = Path(jd.ROOT_DIR_NAME),
+    JD_ROOT_DIR_PATH = Path(os.path.join(
+        jd.ROOT_DIR_NAME,
+        jd.JD_ROOT_DIR_NAME
+    ))
+)
+
+ScoringConfig = Scoring(
+    TIME_STAMP = scoring.TIME_STAMP,
+    ROOT_DIR_PATH = Path(scoring.ROOT_DIR_NAME),
+    SCORES_ROOT_DIR_PATH = Path(os.path.join(
+        scoring.ROOT_DIR_NAME,
+        scoring.SCORES_ROOT_DIR_NAME
+    )),
+    SCORING_DATA_DIR_PATH = Path(os.path.join(
+        scoring.ROOT_DIR_NAME,
+        scoring.SCORES_ROOT_DIR_NAME,
+        scoring.DATA_DIR_NAME
+    )),
+    OUTPUT_DIR_PATH = Path(os.path.join(
+        scoring.ROOT_DIR_NAME,
+        scoring.SCORES_ROOT_DIR_NAME,
+        scoring.OUTPUT_DIR_NAME
+    ))
+)
+
+__all__ = ["DataIngestionConfig", "DataTransformationConfig", "JobDescriptionConfig", "ScoringConfig"]

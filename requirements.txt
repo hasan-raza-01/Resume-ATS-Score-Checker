@@ -21,3 +21,5 @@ firecrawl-py
 langchain-google-genai
 python-dateutil
 aiofiles
+sentence-transformers
+scikit-learn

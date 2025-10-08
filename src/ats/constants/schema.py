@@ -8,7 +8,7 @@ class Constants:
     ...
 
 class DataIngestionConstants(BaseModel):
-    TIME_STAMP: datetime = Field()
+    TIME_STAMP: datetime
     ROOT_DIR_NAME: str = Field(frozen=True) 
     DATA_ROOT_DIR_NAME: str = Field(frozen=True) 
     INGESTION_ROOT_DIR_NAME: str = Field(frozen=True) 
@@ -16,7 +16,8 @@ class DataIngestionConstants(BaseModel):
     OUTPUT_DIR_NAME: str = Field(frozen=True)
 
 class DataTransformationConstants(BaseModel):
-    TIME_STAMP: datetime = Field()
+    PROMPT: str
+    TIME_STAMP: datetime
     ROOT_DIR_NAME: str = Field(frozen=True) 
     DATA_ROOT_DIR_NAME: str = Field(frozen=True) 
     TRANSFORMATION_ROOT_DIR_NAME: str = Field(frozen=True) 
@@ -25,5 +26,16 @@ class DataTransformationConstants(BaseModel):
     TRAIN_DATA_DIR_NAME: str = Field(frozen=True)
     OUTPUT_DIR_NAME: str = Field(frozen=True)
 
+class JobDescriptionConstants(BaseModel):
+    TIME_STAMP: datetime
+    ROOT_DIR_NAME: str = Field(frozen=True) 
+    JD_ROOT_DIR_NAME: str = Field(frozen=True) 
 
-__all__ = ["DataIngestionConstants", "DataTransformationConstants", "Constants", ]
+class ScoringConstants(BaseModel):
+    TIME_STAMP: datetime
+    ROOT_DIR_NAME: str = Field(frozen=True)
+    SCORES_ROOT_DIR_NAME: str = Field(frozen=True)
+    DATA_DIR_NAME: str = Field(frozen=True)
+    OUTPUT_DIR_NAME: str = Field(frozen=True)
+
+__all__ = ["DataIngestionConstants", "DataTransformationConstants", "Constants", "JobDescriptionConstants", "ScoringConstants"]

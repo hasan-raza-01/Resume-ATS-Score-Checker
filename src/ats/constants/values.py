@@ -3,7 +3,7 @@
 # update __all__ 
 
 from .schema import *
-from src.ats.exception import CustomException 
+from ..exception import CustomException 
 from typing import List, Tuple, Dict
 from datetime import datetime
 from box import ConfigBox
@@ -22,6 +22,19 @@ def __ing__(CONFIG:ConfigBox) -> Constants:
 
 def __transform__(CONFIG:ConfigBox) -> Constants:
     return DataTransformationConstants(
+        PROMPT = """
+        You are a data structuring assistant. Extract and structure ONLY the information explicitly provided in the input data.
+
+        IMPORTANT RULES:
+        1. Extract ONLY information that is explicitly present in the data
+        2. Do NOT add, infer, or generate any information
+        3. If information is missing, leave fields as null/None
+        4. For dates, use the exact format provided (e.g., "March 2019", "Present")
+        5. For lists, only include items explicitly mentioned
+
+        Input data to structure:
+        {input_data}
+        """, 
         TIME_STAMP = datetime.now(),
         ROOT_DIR_NAME = CONFIG.ROOT_DIR , 
         DATA_ROOT_DIR_NAME = CONFIG.DATA.ROOT_DIR , 
@@ -32,16 +45,38 @@ def __transform__(CONFIG:ConfigBox) -> Constants:
         OUTPUT_DIR_NAME = CONFIG.DATA.TRANSFORMATION.OUTPUT_DIR
     )
 
+def __jd__(CONFIG:ConfigBox) -> Constants:
+    return JobDescriptionConstants(
+        TIME_STAMP = datetime.now(),
+        ROOT_DIR_NAME = CONFIG.ROOT_DIR,
+        JD_ROOT_DIR_NAME = CONFIG.JD.ROOT_DIR
+    )
+
+def __scoring__(CONFIG:ConfigBox) -> Constants:
+    return ScoringConstants(
+        TIME_STAMP = datetime.now(),
+        ROOT_DIR_NAME = CONFIG.ROOT_DIR,
+        SCORES_ROOT_DIR_NAME = CONFIG.SCORINGS.ROOT_DIR,
+        DATA_DIR_NAME = CONFIG.SCORINGS.DATA_DIR,
+        OUTPUT_DIR_NAME = CONFIG.SCORINGS.OUTPUT_DIR
+    )
+
 dataingestion = "DataIngestion"
 datatransformation = "DataTransformation"
+jobdescription = "JobDescription"
+scorings = "Scoring"
 
 avl_cons = [
     dataingestion, 
     datatransformation, 
+    jobdescription,
+    scorings
 ]
 process = {
     dataingestion:__ing__,
-    datatransformation:__transform__
+    datatransformation:__transform__,
+    jobdescription:__jd__,
+    scorings:__scoring__
 } 
 
 def load(config:ConfigBox, name: str | List[str] | Tuple[str]) -> Dict: 
@@ -51,7 +86,7 @@ def load(config:ConfigBox, name: str | List[str] | Tuple[str]) -> Dict:
         config (ConfigBox): configuration for the object
         name (str | List[str] | Tuple[str]): name of required object  
 
-        Note: Available names --> DataIngestion, DataTransformation,  
+        Note: Available names --> DataIngestion, DataTransformation, JobDescription, Scoring
 
     Raises:
         CustomException: Error shows with file name, line no and error message

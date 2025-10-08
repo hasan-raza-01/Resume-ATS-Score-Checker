@@ -1,9 +1,9 @@
 # update __all__
 
-from src.ats.components import * 
+from ..components import * 
+from ..config import * 
 from fastapi import UploadFile 
 from typing import List, Dict
-from src.ats.config import * 
 
 
 class DataIngestionPipeline: 
@@ -24,11 +24,11 @@ class DataIngestionPipeline:
 class DataTransformationPipeline: 
     """pipeline for process of data transformation 
     """
-    async def run(self, info: Dict[str, FileInfo] | None = None) -> tuple[Dict[str, ResumeSchema], Dict[str, FileInfo]]: 
+    async def run(self, info: Dict[str, FileInfo] = None) -> tuple[Dict[str, ResumeSchema], Dict[str, FileInfo]]: 
         """runs data transformation pipeline and returns the output
 
         Args:
-            info (Dict[str, FileInfo]): dict containing info of all files from previous excecution or \'None\', Defaults to None
+            info (Dict[str, FileInfo]): dict containing info of all files from previous excecution or \'None\', if None files will be loaded from disk, Defaults to None
 
         Returns:
             tuple[Dict[str, ResumeSchema], Dict[str, FileInfo]]: dict containing structured output of resume data, updated dict containing info of all files from current excecution
@@ -36,5 +36,36 @@ class DataTransformationPipeline:
         components = DataTransformationComponents(DataTransformationConfig, DataIngestionConfig, info) 
         return await components
 
+class JobDescriptionPipeline: 
+    """pipeline for extraction of job description 
+    """
+    async def run(self, url:str = None) -> JobDescription: 
+        """runs job extraction pipeline and returns the object 'JobDescription'
 
-__all__ = ["DataIngestionPipeline", "DataTransformationPipeline", ]
+        Args:
+            url (str): url to extract job description, if None then there must be an environment variable named 'JD_URL', Defaults to None
+
+        Returns:
+            tuple[Dict[str, ResumeSchema], Dict[str, FileInfo]]: dict containing structured output of resume data, updated dict containing info of all files from current excecution
+        """
+        components = JobDescriptionComponents(JobDescriptionConfig, url) 
+        return await components
+    
+class ScoringPipeline:
+    """pipeline for scoring of resumes based on job description
+    """
+    async def run(self, resume_data: Dict[str, ResumeSchema], job_data: JobDescription, info: Dict[str, FileInfo]) -> tuple[Dict[str, FileInfo], Dict[str, Dict]]:
+        """runs scoring pipeline and returns files info and scorings
+
+        Args:
+            resume_data (Dict[str, ResumeSchema]): resume data with respect to file names
+            job_data (JobDescription): job description extracted from url
+            info (Dict[str, FileInfo]): files info during execution
+
+        Returns:
+            tuple[Dict[str, FileInfo], Dict[str, Dict]]: tuple of files info and scorings dict
+        """
+        components = ScoringComponents(ScoringConfig, resume_data, job_data, info) 
+        return await components
+
+__all__ = ["DataIngestionPipeline", "DataTransformationPipeline", "JobDescriptionPipeline", "ScoringPipeline"]

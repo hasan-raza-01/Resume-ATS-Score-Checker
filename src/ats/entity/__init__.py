@@ -14,6 +14,7 @@ class DataIngestion(BaseModel):
     OUTPUT_DIR_PATH: Path
 
 class DataTransformation(BaseModel):
+    PROMPT: str
     TIME_STAMP: datetime
     ROOT_DIR_PATH: Path
     DATA_ROOT_DIR_PATH: Path
@@ -23,5 +24,16 @@ class DataTransformation(BaseModel):
     TRAIN_DATA_DIR_PATH: Path
     OUTPUT_DIR_PATH: Path
 
+class JobDescription(BaseModel):
+    TIME_STAMP: datetime
+    ROOT_DIR_PATH: Path
+    JD_ROOT_DIR_PATH: Path
 
-__all__ = ["DataIngestion", "DataTransformation", ]
+class Scoring(BaseModel):
+    TIME_STAMP: datetime
+    ROOT_DIR_PATH: Path
+    SCORES_ROOT_DIR_PATH: Path
+    SCORING_DATA_DIR_PATH: Path
+    OUTPUT_DIR_PATH: Path
+
+__all__ = ["DataIngestion", "DataTransformation", "JobDescription", "Scoring"]

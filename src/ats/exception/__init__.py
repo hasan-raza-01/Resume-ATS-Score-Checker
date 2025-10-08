@@ -2,7 +2,6 @@ import sys as SYS
 from src.ats import logging
 
 
-
 class CustomException(Exception):
 
     def __init__(self, message:str | Exception, sys:SYS):
@@ -13,7 +12,7 @@ class CustomException(Exception):
         self.line = exc_traceback.tb_lineno
 
     def __str__(self):
-        return f"{self.message} on line {self.line} at {self.path})"
+        return f"message: {self.message}, line: {self.line},file: {self.path}"
 
 class BaseError(Exception):
     
@@ -46,7 +45,7 @@ class ResumeTokenLimitError(Exception):
     "error for resume token limit"
     pass 
 
-__all__ = ["CustomException", "FileTypeError", "MinFileSizeError", "MinContextError"]
+__all__ = ["CustomException", "FileTypeError", "MinFileSizeError", "MinContextError", "ResumeTokenLimitError"]
 
 if __name__=="__main__":
     try:

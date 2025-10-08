@@ -6,7 +6,7 @@ import re
 class PersonalInfo(BaseModel):
     name: str = Field(
         ...,  # Required field - no default
-        min_length=1, 
+        # min_length=1, 
         max_length=100,
         description="Full name of the person"
     )

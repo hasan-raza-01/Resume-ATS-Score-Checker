@@ -1,19 +1,19 @@
 from dotenv import load_dotenv 
 load_dotenv()
 
-from src.ats.exception import CustomException, ResumeTokenLimitError
+from ..exception import CustomException, ResumeTokenLimitError
+from ..entity import DataTransformation, DataIngestion
+from ..components.parsers.base import BaseParser
+from ..utils import asave_file, awrite_json
+from ..components.parsers import *
+from ..components.schema import *
+from .. import logging
 from langchain_core.language_models.chat_models import BaseChatModel
-from src.ats.entity import DataTransformation, DataIngestion
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.ats.components.parsers.base import BaseParser
 from langchain_core.prompts import ChatPromptTemplate
-from src.ats.components.parsers import *
-from src.ats.components.schema import *
-from src.ats.utils import asave_file
 from pathlib import PurePath, Path
 from datetime import datetime
 from typing import Dict, Any
-from src.ats import logging
 from copy import deepcopy
 import os, sys, asyncio, aiofiles, json
  
@@ -56,7 +56,7 @@ class DataTransformationComponents:
         if not self.__llm:
             if not os.getenv("GOOGLE_API_KEY"):
                 raise EnvironmentError("no environment variable \'GOOGLE_API_KEY\'")
-            self.__llm = ChatGoogleGenerativeAI(model=os.getenv("LLM", "gemini-2.5-flash-lite"))
+            self.__llm = ChatGoogleGenerativeAI(model=os.getenv("LLM", "gemini-2.5-pro"))
             logging.info(f"using \'{self.__llm.model}\' as LargeLanguageModel")
         self.__parsed_data = {}
         self.__structured_data = {}
@@ -233,19 +233,7 @@ class DataTransformationComponents:
                 "y":[]
             }
             structured_llm = self.__llm.with_structured_output(ResumeSchema)
-            prompt_message = """
-            You are a data structuring assistant. Extract and structure ONLY the information explicitly provided in the input data.
-
-            IMPORTANT RULES:
-            1. Extract ONLY information that is explicitly present in the data
-            2. Do NOT add, infer, or generate any information
-            3. If information is missing, leave fields as null/None
-            4. For dates, use the exact format provided (e.g., "March 2019", "Present")
-            5. For lists, only include items explicitly mentioned
-
-            Input data to structure:
-            {input_data}
-            """
+            prompt_message = self.__config.PROMPT
             prompt_template = ChatPromptTemplate.from_template(prompt_message)
             token_limit = int(os.getenv("RESUME_TOKEN_LIMIT"))
             # get prompts
@@ -285,7 +273,7 @@ class DataTransformationComponents:
                         info.status = False
                         e = CustomException(e, sys)
                         info.error.append(str(e))
-                        logging.critical(str(e) + f" name={name}")
+                        logging.critical(str(e) + f", name={name}")
                     self.__data[name] = info
                 else:
                     logging.critical(f"file-status={info.status}, skipping file \'{name}\'")
@@ -310,15 +298,13 @@ class DataTransformationComponents:
                         if not path.parent.is_dir():
                             path.parent.mkdir(parents=True, exist_ok=True)
                         # create task 
-                        payload = json.dumps(structured_data.model_dump(), ensure_ascii=False, indent=2)
-                        async with aiofiles.open(path, "w", encoding="utf-8", newline="\n") as f:
-                            save_tasks.append(asyncio.create_task(f.write(payload)))
+                        save_tasks.append(asyncio.create_task(awrite_json(path, structured_data.model_dump())))
                         save_True_files.append(name)
                     except Exception as e:
                         info.status = False
                         e = CustomException(e, sys)
                         info.error.append(str(e))
-                        logging.critical(str(e) + f" name=\'{name}\'")
+                        logging.critical(str(e) + f", name=\'{name}\'")
                     self.__data[name] = info
                 else:
                     logging.critical(f"file-status={info.status}, skipping file \'{name}\'")
@@ -329,15 +315,12 @@ class DataTransformationComponents:
             for name, result in list(zip(save_True_files, results)):
                 info = self.__data.get(name)
                 if info.status:
-                    try:
-                        if isinstance(result, Exception):
-                            raise result
-                        info.structured_path = self.__config.STRUCTURED_DATA_DIR_PATH.joinpath(Path(name).stem + Path(name).suffix.replace(".", "_")).with_suffix(".json").absolute()
-                    except Exception as e:
+                    if isinstance(result, Exception):
                         info.status = False
-                        e = CustomException(e, sys)
-                        info.error.append(str(e))
-                        logging.critical(str(e) + f" name={name}")
+                        info.error.append(str(result))
+                        logging.critical(str(result) + f", name={name}")
+                    else:
+                        info.structured_path = self.__config.STRUCTURED_DATA_DIR_PATH.joinpath(Path(name).stem + Path(name).suffix.replace(".", "_")).with_suffix(".json").absolute()
                     self.__data[name] = info
                 else:
                     logging.critical(f"file-status={info.status}, skipping file \'{name}\'")
@@ -369,9 +352,8 @@ class DataTransformationComponents:
                 train_data_path = self.__config.TRAIN_DATA_DIR_PATH.joinpath(f"{timestamp}.json")
                 if not train_data_path.exists():
                     train_data_path.parent.mkdir(parents=True, exist_ok=True)
-                payload = json.dumps(self.__train_data, ensure_ascii=False, indent=2)
-                async with aiofiles.open(train_data_path, "w", encoding="utf-8", newline="\n") as f:
-                    await f.write(payload)
+                # persist 
+                await awrite_json(train_data_path, self.__train_data)
                 logging.info(f"train data saved at \'{train_data_path.as_posix()}\'")
             else:
                 logging.warning(f"no training data are available to save")
@@ -387,6 +369,7 @@ class DataTransformationComponents:
                     info.path = info.path.as_posix()
                     info.parsed_path = info.parsed_path.as_posix()
                     info.structured_path = info.structured_path.as_posix()
+                    info.scores_path = info.scores_path.as_posix()
                 data[key] = vars(info)
             except Exception as e:
                 e = CustomException(e, sys)
@@ -396,9 +379,8 @@ class DataTransformationComponents:
             path = self.__config.OUTPUT_DIR_PATH.joinpath(f"{timestamp}.json")
             if not path.parent.exists():
                 path.parent.mkdir(parents=True, exist_ok=True)
-            payload = json.dumps(data, ensure_ascii=False, indent=2)
-            async with aiofiles.open(path, "w", encoding="utf-8", newline="\n") as f:
-                    await f.write(payload)
+            # persist 
+            await awrite_json(path, data)
             logging.info(f"info saved at \'{path.as_posix()}\'")
         except Exception as e:
             e = CustomException(e, sys)
@@ -412,4 +394,4 @@ class DataTransformationComponents:
         logging.info("Out DataTransformation")
         return (self.__structured_data, self.__data)
         
-__all__ = ["DataTransformationComponents", ]
+__all__ = ["DataTransformationComponents"]

@@ -16,4 +16,11 @@ DATA:
         PARSED_DATA_DIR: parsed 
         STRUCTURED_DATA_DIR: structured 
         OUTPUT_DIR: output
-        
+
+JD:
+    ROOT_DIR: job
+
+SCORINGS:
+    ROOT_DIR: scores
+    DATA_DIR: data
+    OUTPUT_DIR: output

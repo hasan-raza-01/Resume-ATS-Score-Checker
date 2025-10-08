@@ -22,7 +22,7 @@ def load_constants(name: str | list[str] | tuple[str]) -> Dict:
     Args:
         name (str | list[str] | tuple[str]): name of required object 
 
-        Note: Available names --> DataIngestion, DataTransformation,
+        Note: Available names --> DataIngestion, DataTransformation, JobDescription, Scoring
 
     Returns:
         Dict: key = name of object used to load given in variable \'name\', 
@@ -37,4 +37,4 @@ def load_constants(name: str | list[str] | tuple[str]) -> Dict:
     return load(CONFIG, name)
 
 
-__all__ = ["load_constants", ]
+__all__ = ["load_constants"]

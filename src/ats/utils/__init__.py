@@ -1,6 +1,6 @@
 from pathlib import Path
 from src.ats.exception import CustomException
-import re, aiofiles, sys
+import re, aiofiles, sys, json
 
 async def asave_file(content:str | bytes, path:Path) -> Path | Exception: 
     """saves content into file at given path
@@ -66,3 +66,8 @@ async def asave_file(content:str | bytes, path:Path) -> Path | Exception:
         return path
     except Exception as e:
         raise CustomException(e, sys)
+
+async def awrite_json(path:Path, data:dict):
+    payload = json.dumps(data, ensure_ascii=False, indent=2)
+    async with aiofiles.open(path, "w", encoding="utf-8", newline="\n") as f:
+        await f.write(payload)

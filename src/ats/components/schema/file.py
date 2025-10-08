@@ -8,6 +8,7 @@ class FileInfo:
     path:Path = field(default=Path(""))
     parsed_path:Path = field(default=Path(""))
     structured_path: Path = field(default=Path(""))
+    scores_path: Path = field(default=Path(""))
     size:int = field(default=0)
     base64_size:int = field(default=0)
     status:bool = field(default=True)

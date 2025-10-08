@@ -3,16 +3,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .parsers import *
-from copy import deepcopy
 from .schema import FileInfo
-from src.ats.exception import *
-from src.ats import logging 
+from .. import logging 
+from ..exception import *
+from ..entity import * 
+from ..utils import (
+    asave_file, 
+    awrite_json
+)
+from copy import deepcopy
 from fastapi import UploadFile 
-from src.ats.entity import * 
 from typing import Dict, List
 from datetime import datetime
 from pathlib import Path, PurePath
-from src.ats.utils import asave_file
 import sys, os, pymongo, asyncio, base64, json, aiofiles
 
 
@@ -328,6 +331,7 @@ class DataIngestionComponents:
                     info.path = info.path.as_posix()
                     info.parsed_path = info.parsed_path.as_posix()
                     info.structured_path = info.structured_path.as_posix()
+                    info.scores_path = info.scores_path.as_posix()
                 data[key] = vars(info)
             except Exception as e:
                 errors.append(str(i)+") "+str(e))
@@ -338,9 +342,8 @@ class DataIngestionComponents:
             path = self.__config.OUTPUT_DIR_PATH.joinpath(f"{timestamp}.json")
             if not path.parent.exists():
                 path.parent.mkdir(parents=True, exist_ok=True)
-            payload = json.dumps(data, ensure_ascii=False, indent=2)
-            async with aiofiles.open(path, "w", encoding="utf-8", newline="\n") as f:
-                await f.write(payload)
+            # persist 
+            await awrite_json(path, data)
             logging.info(f"info saved at \'{path.as_posix()}\'")
         except Exception as e:
             errors.append(str(i)+") "+str(e))
