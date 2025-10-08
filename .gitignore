@@ -10,6 +10,7 @@ wheels/
 .venv
 logs/
 artifacts/
+data/
 .env
 template.py
 project-plan.txt
