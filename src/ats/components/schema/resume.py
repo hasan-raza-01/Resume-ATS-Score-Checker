@@ -55,7 +55,7 @@ class ProfessionalSummary(BaseModel):
     )
     career_level: Optional[str] = Field(
         None,
-        description="Career level: entry, junior, mid, senior, or executive"
+        description="Career level: entry, junior, mid, senior, or executive, not even a single letter extra other than the provided options"
     )
     
     @field_validator('career_level')

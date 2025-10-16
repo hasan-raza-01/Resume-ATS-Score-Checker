@@ -21,6 +21,8 @@ class FileInfo:
             self.parsed_path = Path(self.parsed_path)
         if isinstance(self.structured_path, str):
             self.structured_path = Path(self.structured_path)
+        if isinstance(self.scores_path, str):
+            self.scores_path = Path(self.scores_path)
 
     # def to_dict(self) -> Dict[str, Any]:
     #     """returns dict object of class"""

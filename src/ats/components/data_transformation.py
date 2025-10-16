@@ -377,8 +377,7 @@ class DataTransformationComponents:
                 i += 1
         try:
             path = self.__config.OUTPUT_DIR_PATH.joinpath(f"{timestamp}.json")
-            if not path.parent.exists():
-                path.parent.mkdir(parents=True, exist_ok=True)
+            path.parent.mkdir(parents=True, exist_ok=True)
             # persist 
             await awrite_json(path, data)
             logging.info(f"info saved at \'{path.as_posix()}\'")

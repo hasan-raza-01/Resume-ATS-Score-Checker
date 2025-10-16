@@ -8,7 +8,8 @@ from typing import Dict
 from pathlib import Path, PurePath
 from copy import deepcopy
 from datetime import datetime
-import sys, asyncio, aiofiles, json
+import asyncio
+import sys
 
 
 class ScoringComponents:
@@ -31,7 +32,7 @@ class ScoringComponents:
                 info = self.__info.get(name)
                 resume_data = self.__resume_data[name]
                 if info.status:
-                    scoring_tasks.append(asyncio.create_task(scorer.score(resume_data, self.__jd)))
+                    scoring_tasks.append(asyncio.create_task(scorer.score(resume_data.model_dump(), self.__jd.model_dump())))
                     scoring_True_files.append(name)
             # wait for scorings 
             scores = await asyncio.gather(*scoring_tasks, return_exceptions=True)
@@ -42,13 +43,12 @@ class ScoringComponents:
                 info = self.__info.get(name)
                 if isinstance(score, Exception):
                     info.status = False
-                    info.error.append(score)
+                    info.error.append(str(score))
                 if info.status:
                     self.__scores[name] = score
                     # create task 
                     path = self.__config.SCORING_DATA_DIR_PATH.joinpath(Path(name).stem + Path(name).suffix.replace(".", "_")).with_suffix(".json").absolute()
-                    if not path.parent.exists():
-                        path.mkdir(parents=True, exist_ok=True)
+                    path.parent.mkdir(parents=True, exist_ok=True)
                     save_tasks.append(asyncio.create_task(awrite_json(path, score)))
                     save_True_files.append(name)
                 self.__info[name] = info 
@@ -59,14 +59,14 @@ class ScoringComponents:
                 info = self.__info.get(name)
                 if isinstance(res, Exception):
                     info.status = False
-                    info.error.append(res)
+                    info.error.append(str(res))
                 if info.status:
                     path = self.__config.SCORING_DATA_DIR_PATH.joinpath(Path(name).stem + Path(name).suffix.replace(".", "_")).with_suffix(".json").absolute()
                     info.scores_path = path
                 self.__info[name] = info
         except Exception as e:
-            e = CustomException(e, sys)
             logging.error(e)
+            raise CustomException(e, sys)
     
     async def __main(self) -> tuple[Dict[str, FileInfo], Dict[str, Dict]]:
         """returns a dict for calculated scores with recommendation, key = file name, value = dict of scores and other info
@@ -95,8 +95,7 @@ class ScoringComponents:
             try:
                 timestamp = self.__config.TIME_STAMP.strftime("%d_%m_%Y_%H_%M_%S")
                 path = self.__config.OUTPUT_DIR_PATH.joinpath(f"{timestamp}.json")
-                if not path.parent.exists():
-                    path.parent.mkdir(parents=True, exist_ok=True)
+                path.parent.mkdir(parents=True, exist_ok=True)
                 if path.exists():
                     self.__config.TIME_STAMP = datetime.now()
                     timestamp = self.__config.TIME_STAMP.strftime("%d_%m_%Y_%H_%M_%S")

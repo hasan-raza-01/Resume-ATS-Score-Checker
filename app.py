@@ -63,13 +63,15 @@ async def upload(files:List[UploadFile] = File(...)):
         print("--------------------------------------------------------")
         print()
         scoring_pipeline = ScoringPipeline()
-        scorings = await scoring_pipeline.run(resume_data, job_data, info)
+        info, scorings = await scoring_pipeline.run(resume_data, job_data, info)
         print("ScoringPipeline output")
+        print("--------------------------------------------------------")
+        print(info)
         print("--------------------------------------------------------")
         print(scorings)
         print("--------------------------------------------------------")
         print()
-        return Response("upload successfully completed.")
+        return Response("upload successfull !!!")
     except Exception as e:
         return Response(str(e), 500)
 

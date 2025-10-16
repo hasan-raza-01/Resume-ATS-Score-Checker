@@ -8,6 +8,8 @@ from docx import Document as DocxDocument
 import tempfile
 import subprocess
 from .base import *
+from ...exception import CustomException
+import sys
 
 class DOCXParser(BaseParser):
     
@@ -25,8 +27,10 @@ class DOCXParser(BaseParser):
                 return await self._extract_docx_with_ocr(path)
                 
         except Exception as e:
-            self.logger.error(f"DOCX parsing failed: {e}")
-            raise
+            if not isinstance(e, CustomException):
+                e = CustomException(e, sys)
+            self.logger.error(e)
+            raise e
     
     async def _detect_readable_docx(self, file_path: Path) -> bool:
         """Check if DOCX has readable text content"""
@@ -135,13 +139,14 @@ class DOCXParser(BaseParser):
                 raise Exception("Failed to convert DOCX to PDF")
                 
         except Exception as e:
-            self.logger.error(f"DOCX OCR extraction failed: {e}")
+            e = CustomException(e, sys)
+            self.logger.error(e)
             # Last resort - try basic extraction
             try:
                 result = await self._extract_native_docx(file_path)
                 return result
             except:
-                raise
+                raise e
         
         return full_text
 
