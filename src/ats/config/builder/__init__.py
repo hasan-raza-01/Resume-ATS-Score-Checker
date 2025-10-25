@@ -96,5 +96,17 @@ ScoringConfig = Scoring(
         scoring.OUTPUT_DIR_NAME
     ))
 )
+CloudPushConfig = CloudPush(
+    # format = {local/path/to/the/folder|file.txt: cloud/path/to/the/folder|file.txt, ...}
+    # make sure to create all folders on cloud
+    FOLDERS={
+        str(DataIngestionConfig.ROOT_DIR_PATH) : str(DataIngestionConfig.ROOT_DIR_PATH),
+        str(DataTransformationConfig.TRAIN_DATA_DIR_PATH) : str(DataTransformationConfig.TRAIN_DATA_DIR_PATH),
+        os.getenv("LOGS_FOLDER") : os.getenv("LOGS_FOLDER")
+    },
+    FILES={
 
-__all__ = ["DataIngestionConfig", "DataTransformationConfig", "JobDescriptionConfig", "ScoringConfig"]
+    }
+)
+
+__all__ = ["DataIngestionConfig", "DataTransformationConfig", "JobDescriptionConfig", "ScoringConfig", "CloudPushConfig"]

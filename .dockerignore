@@ -7,14 +7,15 @@ wheels/
 *.egg-info
 
 # Virtual environments
-.venv
+.venv/
 logs/
 artifacts/
 data/
+resumes/
 .env
 template.py
 project-plan.txt
 .ignore
-notebook/test 
-main.py 
+notebook
+main.py
 secrets/

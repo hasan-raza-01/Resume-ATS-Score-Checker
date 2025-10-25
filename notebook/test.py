@@ -29,21 +29,28 @@
 #     for result in results:
 #         print(result)
 
-import asyncio, time
+# import asyncio, time
 
-async def func(): 
-    await asyncio.sleep(0)
-    print("Hii")
+# async def func(): 
+#     await asyncio.sleep(0)
+#     print("Hii")
 
-st = time.time()
-asyncio.run(func())
-async_taken = time.time() - st
+# st = time.time()
+# asyncio.run(func())
+# async_taken = time.time() - st
 
-def func():
-    print("Hii")
+# def func():
+#     print("Hii")
 
-st = time.time()
-func()
-normal_taken = time.time() - st  
+# st = time.time()
+# func()
+# normal_taken = time.time() - st  
 
-print(async_taken - normal_taken)
+# print(async_taken - normal_taken)
+
+from src.ats.config import CloudPushConfig
+
+for src, dst in CloudPushConfig.FILES.items():
+    print(src, dst)
+for src, dst in CloudPushConfig.FOLDERS.items():
+    print(src, dst)

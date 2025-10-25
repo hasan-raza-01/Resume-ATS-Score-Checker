@@ -4,15 +4,19 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.chrome.service import Service
 import asyncio
 import aiofiles
 import time
 from pathlib import Path
 from .base import *
 from ...exception import CustomException
-import sys
+import sys, tempfile, atexit, os, shutil
 
 class HTMLParser(BaseParser):
+    def __init__(self):
+        super().__init__()
+        self.temp_dirs = []  # Track temp directories for cleanup
     
     def can_handle(self, file_type: str) -> bool:
         return file_type == "html"
@@ -123,7 +127,11 @@ class HTMLParser(BaseParser):
                     
                 finally:
                     if driver:
-                        driver.quit()
+                        try:
+                            # Small delay to ensure cleanup
+                            self._cleanup_driver(driver)
+                        except Exception as e:
+                            self.logger.error(f"Error closing driver: {e}")
             
             result = await loop.run_in_executor(None, _render_html)
             self.logger.info("parsed through rendering")
@@ -138,15 +146,66 @@ class HTMLParser(BaseParser):
         """Setup Chrome driver with options"""
         try:
             chrome_options = Options()
-            chrome_options.add_argument("--headless")
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-dev-shm-usage")
-            chrome_options.add_argument("--disable-gpu")
-            return webdriver.Chrome(options=chrome_options)
+            chrome_options.add_argument('--headless=new')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--disable-setuid-sandbox')
+            chrome_options.add_argument('--disable-software-rasterizer')
+
+            # Critical: Create unique temp directory for each instance
+            temp_dir = tempfile.mkdtemp(prefix='chrome_user_data_')
+            self.temp_dirs.append(temp_dir)
+            chrome_options.add_argument(f'--user-data-dir={temp_dir}')
+
+            # Additional stability options
+            chrome_options.add_argument('--disable-extensions')
+            chrome_options.add_argument('--disable-background-networking')
+            chrome_options.add_argument('--disable-sync')
+            chrome_options.add_argument('--disable-default-apps')
+            chrome_options.add_argument('--no-first-run')
+            chrome_options.add_argument('--disable-logging')
+            chrome_options.add_argument('--log-level=3')
+
+            # Add these instead for stability
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_argument('--disable-infobars')
+            chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--start-maximized')
+
+            # Set page load strategy to reduce timeouts
+            chrome_options.page_load_strategy = 'normal'
+            
+            # Explicitly set service to avoid port conflicts
+            service = Service()
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+
+            # Set implicit timeout
+            driver.set_page_load_timeout(30)
+            
+            return driver
         except Exception as e:
             e = CustomException(e, sys)
             self.logger.error(e)
             raise e
+    
+    def _cleanup_driver(self, driver):
+        """Properly cleanup driver and temp directories"""
+        try:
+            if driver:
+                driver.quit()
+                # Wait a moment for processes to terminate
+                time.sleep(1)
+        except:
+            pass
+        
+        # Clean up temp directories
+        for temp_dir in self.temp_dirs:
+            try:
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+            except:
+                pass
     
     def _wait_for_page_load(self, driver, timeout):
         """Comprehensive waiting strategy"""
@@ -154,47 +213,78 @@ class HTMLParser(BaseParser):
             wait = WebDriverWait(driver, timeout)
             
             # 1. Wait for DOM ready
-            wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+            try:
+                wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+            except Exception as e:
+                self.logger.warning(f"DOM ready check failed: {e}")
             
-            # 2. Wait for minimum content
+            # 2. Wait for minimum content (with fallback)
             try:
                 wait.until(lambda d: len(d.find_element(By.TAG_NAME, "body").text) > 100)
             except TimeoutException:
-                pass
+                self.logger.info("Timeout waiting for content, proceeding anyway")
+            except Exception as e:
+                self.logger.warning(f"Content check failed: {e}")
             
             # 3. Content stability check
-            self._wait_for_stability(driver, max_checks=5)
+            self._wait_for_stability(driver, max_checks=3)  # Reduce checks
             
             return driver.page_source
+            
         except Exception as e:
             if not isinstance(e, CustomException):
                 e = CustomException(e, sys)
             self.logger.error(e)
             raise e
-    
+
     def _wait_for_stability(self, driver, max_checks=5):
         """Wait until page content stops changing"""
         try:
             previous_content = ""
             stable_count = 0
             
-            for _ in range(max_checks):
+            for i in range(max_checks):
                 time.sleep(1)
                 try:
+                    # Check if session is still valid before accessing elements
+                    if not self._is_session_valid(driver):
+                        self.logger.warning("Session became invalid during stability check")
+                        break
+                        
                     current_content = driver.find_element(By.TAG_NAME, "body").text
+                    
                     if current_content == previous_content and len(current_content) > 50:
                         stable_count += 1
                         if stable_count >= 2:  # Stable for 2 seconds
                             break
                     else:
                         stable_count = 0
+
                     previous_content = current_content
-                except:
-                    break
+
+                except Exception as e:
+                    self.logger.warning(f"Error during stability check iteration {i}: {e}")
+                    # If we've checked at least once and got content, break
+                    if len(previous_content) > 50:
+                        break
+                    # Otherwise, try one more time
+                    if i < max_checks - 1:
+                        continue
+                    else:
+                        break
+                        
         except Exception as e:
             e = CustomException(e, sys)
             self.logger.error(e)
             raise e
+
+    def _is_session_valid(self, driver) -> bool:
+        """Check if the WebDriver session is still valid"""
+        try:
+            driver.current_url
+            return True
+        except:
+            return False
     
     def _parse_rendered_content(self, rendered_html: str) -> str:
         """Parse the rendered HTML content"""

@@ -1,9 +1,9 @@
 # update __all__
 
-from ..components import * 
-from ..config import * 
 from fastapi import UploadFile 
 from typing import List, Dict
+from ..components import * 
+from ..config import * 
 
 
 class DataIngestionPipeline: 
@@ -68,4 +68,11 @@ class ScoringPipeline:
         components = ScoringComponents(ScoringConfig, resume_data, job_data, info) 
         return await components
 
-__all__ = ["DataIngestionPipeline", "DataTransformationPipeline", "JobDescriptionPipeline", "ScoringPipeline"]
+class CloudPushPipeline:
+    """pipeline for pushing data from local directory/files to the cloud
+    """
+    async def run(self):
+        components = CloudPushComponents(CloudPushConfig) 
+        return await components
+
+__all__ = ["DataIngestionPipeline", "DataTransformationPipeline", "JobDescriptionPipeline", "ScoringPipeline", "CloudPushPipeline"]

@@ -1,13 +1,18 @@
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import certifi
 ca = certifi.where() 
 
-from fastapi import FastAPI, UploadFile, File, Response 
-from fastapi.middleware.cors import CORSMiddleware 
+from dotenv import load_dotenv
+load_dotenv("secrets/.env")
+
+from fastapi import FastAPI, UploadFile, File, Response
+from fastapi.middleware.cors import CORSMiddleware
 from src.ats.pipeline import * 
 from datetime import datetime 
 from typing import List 
-import uvicorn 
-
+import uvicorn
 
 app = FastAPI(
     title="Resume Checker [ATS]",
@@ -26,14 +31,10 @@ app.add_middleware(
 # health check 
 @app.get("/health", tags=["health"])
 async def health_check():
-    return Response(
-        content="App is running perfectly fine.",
-        status_code=200,
-        headers={
-            "status": "ok",
-            "timestamp": datetime.now().strftime("%H:%M:%S")
-        }
-    )
+    return {
+        "status": "ok",
+        "timestamp": datetime.now().strftime("%H:%M:%S")
+    }
 
 # upload resume 
 @app.post("/upload")
@@ -71,9 +72,15 @@ async def upload(files:List[UploadFile] = File(...)):
         print(scorings)
         print("--------------------------------------------------------")
         print()
-        return Response("upload successfull !!!")
+        return {
+            "info":info,
+            "scorings":scorings
+        }
     except Exception as e:
         return Response(str(e), 500)
+    finally:
+        cloud_push_pipeline = CloudPushPipeline()
+        await cloud_push_pipeline.run()
 
 
 if __name__ == "__main__":

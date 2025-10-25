@@ -5,7 +5,11 @@ import datetime
 filename_format = datetime.datetime.now().strftime("%d_%m_%Y__%H_%M_%S")
 filename = f"{filename_format}.log"
 
-folder_name = os.path.join(os.getcwd(), "logs")
+#####################################################
+os.environ["LOGS_FOLDER"]="logs"    #################
+#####################################################
+
+folder_name = os.path.join(os.getcwd(), os.getenv("LOGS_FOLDER"))
 
 os.makedirs(folder_name, exist_ok=True)
 

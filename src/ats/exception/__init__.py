@@ -12,7 +12,7 @@ class CustomException(Exception):
         self.line = exc_traceback.tb_lineno
 
     def __str__(self):
-        return f"message: {self.message}, line: {self.line},file: {self.path}"
+        return f"CustomException: {self.message} on line: {self.line} of {self.path}"
 
 class BaseError(Exception):
     

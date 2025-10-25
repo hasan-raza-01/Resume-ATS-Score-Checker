@@ -36,4 +36,8 @@ class Scoring(BaseModel):
     SCORING_DATA_DIR_PATH: Path
     OUTPUT_DIR_PATH: Path
 
-__all__ = ["DataIngestion", "DataTransformation", "JobDescription", "Scoring"]
+class CloudPush(BaseModel):
+    FOLDERS: dict
+    FILES: dict
+
+__all__ = ["DataIngestion", "DataTransformation", "JobDescription", "Scoring", "CloudPush"]

@@ -280,8 +280,8 @@ class DataIngestionComponents:
             total_records = await self.__collection.count_documents({})
             logging.info(f"got connection, database=\'{self.__database.name}\', collection=\'{self.__collection.name}\', records={total_records}")
         except Exception as e: 
+            e = CustomException(e, sys)
             logging.error(str(e))
-            print(CustomException(e, sys))
             
     async def __ingest(self) -> None: 
         "Ingest data into mongodb if the connection is successfull"
