@@ -6,8 +6,8 @@ on:
       - main
 
 env:
-  IMAGE_NAME: rasc
-  CONTAINER_NAME: rasc-container
+  IMAGE_NAME: my-app
+  CONTAINER_NAME: my-app-container
 
 jobs:
   deploy:
@@ -32,7 +32,17 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Login to Artifact Registry
+      - name: Remove Docker credential helper config
+        run: |
+          # Remove any existing Docker credential helper config that might conflict
+          mkdir -p ~/.docker
+          cat > ~/.docker/config.json <<EOF
+          {
+            "auths": {}
+          }
+          EOF
+
+      - name: Login to Artifact Registry with access token
         run: |
           echo "${{ steps.auth.outputs.access_token }}" | docker login -u oauth2accesstoken --password-stdin https://${{ secrets.GCP_REGION }}-docker.pkg.dev
 
@@ -64,7 +74,7 @@ jobs:
               docker run -d \
                 --name ${{ env.CONTAINER_NAME }} \
                 --restart unless-stopped \
-                -p 80:8080 \
+                -p 80:8000 \
                 ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
               
               # Clean up old images
