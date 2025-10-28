@@ -59,7 +59,7 @@ RUN uv pip install --no-cache-dir --system -e .
 RUN mkdir -p /tmp/chrome-user-data && chmod 1777 /tmp/chrome-user-data
 
 # Expose port which is exposed by application to send and receive requests
-EXPOSE 8000 
+EXPOSE 8080 
 
 # Use tini as entrypoint to reap zombie processes
 ENTRYPOINT ["/usr/bin/tini", "--"]

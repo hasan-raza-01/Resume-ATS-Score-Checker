@@ -1,6 +1,6 @@
 import httpx, asyncio
 
-url = "http://localhost:8000/upload"
+url = "http://localhost:8080/upload"
 
 # For async support
 async def upload_files():
