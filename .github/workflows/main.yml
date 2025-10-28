@@ -6,8 +6,8 @@ on:
       - main
 
 env:
-  IMAGE_NAME: rasc
-  CONTAINER_NAME: rasc-container
+  IMAGE_NAME: my-app
+  CONTAINER_NAME: my-app-container
 
 jobs:
   deploy:
@@ -22,10 +22,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Authenticate to Google Cloud
-        id: auth
         uses: google-github-actions/auth@v2
         with:
-          token_format: access_token  # Important! Generate access token
           workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
           service_account: ${{ secrets.GCP_SA_EMAIL }}
 
@@ -53,9 +51,6 @@ jobs:
             --zone=${{ secrets.GCP_VM_ZONE }} \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --command="
-              # Authenticate Docker on VM
-              gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
-              
               # Pull latest image from Artifact Registry
               docker pull ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
               
