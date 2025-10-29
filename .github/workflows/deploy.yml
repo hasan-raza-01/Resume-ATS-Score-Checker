@@ -9,12 +9,32 @@ on:
       - main
 
 env:
-  IMAGE_NAME: 'rasc'
+  IMAGE_NAME: 'my-app'
 
 jobs:
-  # Job 1: Build and Push Image to Artifact Registry
+  # Job 1: Continuous Integration
+  continuous-integration:
+    name: Continuous Integration
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        run: |
+          echo "Running tests..."
+          # Add your test commands here
+
+      - name: Lint code
+        run: |
+          echo "Running linters..."
+          # Add your linting commands here
+
+  # Job 2: Build and Push to Artifact Registry
   build-and-push:
     name: Build and Push Docker Image
+    needs: continuous-integration
     runs-on: ubuntu-latest
     
     permissions:
@@ -32,8 +52,8 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'github-actions-deployer@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com'
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -59,7 +79,7 @@ jobs:
           docker tag ${{ steps.build-image.outputs.image-url }} $LATEST_URL
           docker push $LATEST_URL
 
-  # Job 2: Continuous Deployment to Compute Engine
+  # Job 3: Deploy to Compute Engine
   continuous-deployment:
     name: Deploy to Compute Engine
     needs: build-and-push
@@ -75,8 +95,8 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'github-actions-deployer@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com'
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -98,9 +118,4 @@ jobs:
             --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
           
           echo "instance-ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
-          echo "Application deployed at: http://$INSTANCE_IP"
-          
-      - name: Wait for deployment
-        run: |
-          echo "Waiting 30 seconds for container to start..."
-          sleep 30
+          echo "✅ Application deployed at: http://$INSTANCE_IP:8080"
