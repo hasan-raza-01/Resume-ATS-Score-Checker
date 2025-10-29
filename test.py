@@ -1,6 +1,7 @@
 import httpx, asyncio
 
 url = "http://localhost:8080/upload"
+# url = "http://136.115.34.28:8080/upload" # gcp url 
 
 # For async support
 async def upload_files():
