@@ -1,5 +1,4 @@
 from google.cloud.storage import Client, transfer_manager
-from google.oauth2 import service_account
 from ..exception import CustomException
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -8,15 +7,8 @@ import sys, os, asyncio
 
 
 class BaseCloud(ABC):
-    def __init__(self):
-        self.credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if not self.credentials_path:
-            raise EnvironmentError(f"Env var \'GOOGLE_APPLICATION_CREDENTIALS\' having value \'{self.credentials_path}\'")
-
     def verify_args(self):
-        # Load credentials from file
-        credentials = service_account.Credentials.from_service_account_file(self.credentials_path)
-        self.client = Client(credentials=credentials)
+        self.client = Client()
         self.bucket = self.client.bucket(self.bucket_name)
         if not isinstance(self.src, Path):
             self.src = Path(self.src)

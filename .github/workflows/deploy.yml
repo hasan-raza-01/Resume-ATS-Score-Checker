@@ -1,0 +1,106 @@
+name: CI/CD Pipeline to GCP
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: 'rasc'
+
+jobs:
+  # Job 1: Build and Push Image to Artifact Registry
+  build-and-push:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    
+    outputs:
+      image-url: ${{ steps.build-image.outputs.image-url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-actions-deployer@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.dev
+
+      - name: Build Docker Image
+        id: build-image
+        run: |
+          IMAGE_URL="${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          docker build -t $IMAGE_URL .
+          echo "image-url=$IMAGE_URL" >> $GITHUB_OUTPUT
+
+      - name: Push Docker Image to Artifact Registry
+        run: |
+          docker push ${{ steps.build-image.outputs.image-url }}
+          
+      - name: Tag as latest
+        run: |
+          LATEST_URL="${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:latest"
+          docker tag ${{ steps.build-image.outputs.image-url }} $LATEST_URL
+          docker push $LATEST_URL
+
+  # Job 2: Continuous Deployment to Compute Engine
+  continuous-deployment:
+    name: Deploy to Compute Engine
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    
+    steps:
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/${{ secrets.PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-actions-deployer@${{ secrets.PROJECT_ID }}.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Compute Engine
+        run: |
+          IMAGE_URL="${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          
+          gcloud compute instances update-container ${{ secrets.INSTANCE_NAME }} \
+            --zone=${{ secrets.ZONE }} \
+            --container-image=$IMAGE_URL \
+            --container-restart-policy=always
+          
+      - name: Get instance IP
+        id: get-ip
+        run: |
+          INSTANCE_IP=$(gcloud compute instances describe ${{ secrets.INSTANCE_NAME }} \
+            --zone=${{ secrets.ZONE }} \
+            --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
+          
+          echo "instance-ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
+          echo "Application deployed at: http://$INSTANCE_IP"
+          
+      - name: Wait for deployment
+        run: |
+          echo "Waiting 30 seconds for container to start..."
+          sleep 30

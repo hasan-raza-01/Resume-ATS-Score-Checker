@@ -17,3 +17,4 @@ project-plan.txt
 .ignore
 notebook/test 
 main.py 
+secrets/
