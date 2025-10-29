@@ -101,54 +101,57 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Deploy to Compute Engine via SSH
+      - name: Deploy to Compute Engine with Secret Manager
         run: |
           IMAGE_URL="${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
-          
-          echo "Deploying image: $IMAGE_URL"
           
           gcloud compute ssh ${{ secrets.INSTANCE_NAME }} \
             --zone=${{ secrets.ZONE }} \
             --command="
               set -e
               
-              echo 'Configuring Docker authentication...'
-              gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.dev --quiet
+              echo '==== Starting Deployment ===='
+              
+              # Create app directory
+              sudo mkdir -p /opt/my-app
+              
+              # Fetch ALL secrets and create .env file
+              echo 'Fetching secrets from Secret Manager...'
+              {
+                # secrets
+                echo \"MONGODB_URI=\$(gcloud secrets versions access latest --secret='MONGODB_URI')\"
+                echo \"DATABASE=\$(gcloud secrets versions access latest --secret='DATABASE')\"
+                echo \"COLLECTION=\$(gcloud secrets versions access latest --secret='COLLECTION')\"
+                echo \"FIRECRAWL_API_KEY=\$(gcloud secrets versions access latest --secret='FIRECRAWL_API_KEY')\"
+                echo \"GOOGLE_API_KEY=\$(gcloud secrets versions access latest --secret='GOOGLE_API_KEY')\"
+                echo \"LLM=\$(gcloud secrets versions access latest --secret='LLM')\"
+                echo \"RESUME_TOKEN_LIMIT=\$(gcloud secrets versions access latest --secret='RESUME_TOKEN_LIMIT')\"
+                echo \"JD_URL=\$(gcloud secrets versions access latest --secret='JD_URL')\"
+                echo \"GCP_BUCKET=\$(gcloud secrets versions access latest --secret='GCP_BUCKET')\"
+              } | sudo tee /opt/my-app/.env > /dev/null
+              
+              # Secure the .env file
+              sudo chmod 600 /opt/my-app/.env
+              sudo chown root:root /opt/my-app/.env
               
               echo 'Stopping existing container...'
               sudo docker stop my-app-container 2>/dev/null || true
               sudo docker rm my-app-container 2>/dev/null || true
               
               echo 'Pulling new image...'
+              gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.dev --quiet
               sudo docker pull ${IMAGE_URL}
               
-              echo 'Starting new container...'
+              echo 'Starting container with secrets...'
               sudo docker run -d \
                 --name my-app-container \
                 --restart always \
                 -p 8080:8080 \
+                --env-file /opt/my-app/.env \
                 ${IMAGE_URL}
               
-              echo 'Cleaning up old images...'
+              echo 'Cleaning up...'
               sudo docker image prune -af
               
-              echo 'Deployment completed successfully!'
+              echo '✅ Deployment completed successfully!'
             "
-
-      - name: Get instance IP and verify
-        run: |
-          INSTANCE_IP=$(gcloud compute instances describe ${{ secrets.INSTANCE_NAME }} \
-            --zone=${{ secrets.ZONE }} \
-            --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
-          
-          echo "=========================================="
-          echo "✅ Deployment Successful!"
-          echo "Instance IP: $INSTANCE_IP"
-          echo "Application URL: http://$INSTANCE_IP:8080"
-          echo "=========================================="
-          
-          echo "Waiting 30 seconds for container to start..."
-          sleep 30
-          
-          echo "Testing application endpoint..."
-          curl -f http://$INSTANCE_IP:8080 || echo "⚠️ Application may still be starting up..."
