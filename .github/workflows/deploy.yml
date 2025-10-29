@@ -79,7 +79,7 @@ jobs:
           docker tag ${{ steps.build-image.outputs.image-url }} $LATEST_URL
           docker push $LATEST_URL
 
-  # Job 3: Deploy to Compute Engine
+  # Job 3: Deploy to Compute Engine via SSH
   continuous-deployment:
     name: Deploy to Compute Engine
     needs: build-and-push
@@ -101,21 +101,54 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Deploy to Compute Engine
+      - name: Deploy to Compute Engine via SSH
         run: |
           IMAGE_URL="${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.GAR_REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
           
-          gcloud compute instances update-container ${{ secrets.INSTANCE_NAME }} \
-            --zone=${{ secrets.ZONE }} \
-            --container-image=$IMAGE_URL \
-            --container-restart-policy=always
+          echo "Deploying image: $IMAGE_URL"
           
-      - name: Get instance IP
-        id: get-ip
+          gcloud compute ssh ${{ secrets.INSTANCE_NAME }} \
+            --zone=${{ secrets.ZONE }} \
+            --command="
+              set -e
+              
+              echo 'Configuring Docker authentication...'
+              gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.dev --quiet
+              
+              echo 'Stopping existing container...'
+              sudo docker stop my-app-container 2>/dev/null || true
+              sudo docker rm my-app-container 2>/dev/null || true
+              
+              echo 'Pulling new image...'
+              sudo docker pull ${IMAGE_URL}
+              
+              echo 'Starting new container...'
+              sudo docker run -d \
+                --name my-app-container \
+                --restart always \
+                -p 8080:8080 \
+                ${IMAGE_URL}
+              
+              echo 'Cleaning up old images...'
+              sudo docker image prune -af
+              
+              echo 'Deployment completed successfully!'
+            "
+
+      - name: Get instance IP and verify
         run: |
           INSTANCE_IP=$(gcloud compute instances describe ${{ secrets.INSTANCE_NAME }} \
             --zone=${{ secrets.ZONE }} \
             --format='get(networkInterfaces[0].accessConfigs[0].natIP)')
           
-          echo "instance-ip=$INSTANCE_IP" >> $GITHUB_OUTPUT
-          echo "✅ Application deployed at: http://$INSTANCE_IP:8080"
+          echo "=========================================="
+          echo "✅ Deployment Successful!"
+          echo "Instance IP: $INSTANCE_IP"
+          echo "Application URL: http://$INSTANCE_IP:8080"
+          echo "=========================================="
+          
+          echo "Waiting 30 seconds for container to start..."
+          sleep 30
+          
+          echo "Testing application endpoint..."
+          curl -f http://$INSTANCE_IP:8080 || echo "⚠️ Application may still be starting up..."
