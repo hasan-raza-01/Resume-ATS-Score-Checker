@@ -547,27 +547,27 @@ The `.github/workflows/deploy.yml` automates testing, building, and deployment:
 3. **Deploy Stage**: Deploys to Google Compute Engine with:
 - Workload Identity Federation authentication
 - Service account(storage-sa)
-    roles/storage.admin (Storage Admin permissions)
+    - roles/storage.admin (Storage Admin permissions)
 - Service Account: github-actions-deployer
-    roles/artifactregistry.writer (Artifact Registry Writer)
+    - roles/artifactregistry.writer (Artifact Registry Writer)
 
-    roles/compute.instanceAdmin.v1 (Compute Instance Admin v1)
+    - roles/compute.instanceAdmin.v1 (Compute Instance Admin v1)
 
-    roles/iam.serviceAccountUser (Service Account User)
+    - roles/iam.serviceAccountUser (Service Account User)
 
-    roles/secretmanager.secretAccessor (Secret Manager Secret Accessor)
+    - roles/secretmanager.secretAccessor (Secret Manager Secret Accessor)
 
-    roles/storage.admin (Storage Admin permissions)
+    - roles/storage.admin (Storage Admin permissions)
 - Service Account: compute-instance-sa
-    roles/artifactregistry.reader (Artifact Registry Reader)
+    - roles/artifactregistry.reader (Artifact Registry Reader)
 
-    roles/logging.logWriter (Logging Writer)
+    - roles/logging.logWriter (Logging Writer)
 
-    roles/monitoring.metricWriter (Monitoring Metric Writer)
+    - roles/monitoring.metricWriter (Monitoring Metric Writer)
 
-    roles/secretmanager.secretAccessor (Secret Manager Secret Accessor)
+    - roles/secretmanager.secretAccessor (Secret Manager Secret Accessor)
 
-    roles/storage.objectAdmin (Storage Object Admin)
+    - roles/storage.objectAdmin (Storage Object Admin)
 - Environment variables via Secret Manager(GCP)
 
 ### Deployment Environment Variables
@@ -723,7 +723,7 @@ ASYNC_WORKERS=4
 
 **POST** `/upload`
 
-upload a resume against a job description.
+upload resumes.
 
 **Request:**
 ```
